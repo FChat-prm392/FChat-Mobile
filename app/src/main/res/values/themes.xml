@@ -2,6 +2,8 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.FChatMobile" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
+        <item name="android:windowSplashScreenBackground">#000000</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_fchat_logo</item>
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
