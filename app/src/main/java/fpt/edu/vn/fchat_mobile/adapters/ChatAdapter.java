@@ -11,6 +11,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
@@ -41,14 +43,19 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         holder.name.setText(chat.name);
         holder.lastMessage.setText(chat.message);
         holder.time.setText(chat.time);
-        holder.avatar.setImageResource(chat.avatarResId);
         holder.onlineDot.setVisibility(chat.isOnline ? View.VISIBLE : View.GONE);
+
+        // Load avatar from URL using Glide
+        Glide.with(context)
+                .load(chat.avatarUrl)
+                .placeholder(R.drawable.ic_avatar)
+                .into(holder.avatar);
 
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, ChatDetailActivity.class);
             intent.putExtra("name", chat.name);
             intent.putExtra("status", "Hoạt động " + chat.time + " trước");
-            intent.putExtra("avatarResId", chat.avatarResId);
+            intent.putExtra("avatarUrl", chat.avatarUrl);
             context.startActivity(intent);
         });
     }
