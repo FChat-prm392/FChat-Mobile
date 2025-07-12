@@ -1,5 +1,6 @@
 package fpt.edu.vn.fchat_mobile.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.EditText;
 
@@ -44,10 +45,9 @@ public class ChatListActivity extends AppCompatActivity {
             int id = item.getItemId();
 
             if (id == R.id.nav_chat) {
-                // Đã ở ChatListActivity rồi → không làm gì
                 return true;
             }  else if (id == R.id.nav_menu) {
-                // TODO: Chưa có activity → giữ trống hoặc toast
+                startActivity(new Intent(this, MenuActivity.class));
                 return true;
             }
 
@@ -88,4 +88,6 @@ public class ChatListActivity extends AppCompatActivity {
         chatList.add(new ChatItem("Mèi", "Thế là chạy ké sang bên", "11:14", R.drawable.ic_avatar, false));
         chatAdapter.notifyDataSetChanged();
     }
+
+
 }
