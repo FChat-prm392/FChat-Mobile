@@ -53,6 +53,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, ChatDetailActivity.class);
+            intent.putExtra("chatId", chat.id);
             intent.putExtra("name", chat.name);
             intent.putExtra("status", "Hoạt động " + chat.time + " trước");
             intent.putExtra("avatarUrl", chat.avatarUrl);
@@ -64,6 +65,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     public int getItemCount() {
         return chatList.size();
     }
+
+
 
     static class ChatViewHolder extends RecyclerView.ViewHolder {
         ImageView avatar;

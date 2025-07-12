@@ -23,6 +23,7 @@ import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.responses.ChatResponse;
 import fpt.edu.vn.fchat_mobile.responses.MessageResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
+import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -32,12 +33,23 @@ public class ChatListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private ChatAdapter chatAdapter;
     private final List<ChatItem> chatList = new ArrayList<>();
+    private SessionManager sessionManager;
     private static final String TAG = "ChatListActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat_list);
+
+        sessionManager = new SessionManager(this);
+        
+        // Check if user is logged in
+        if (!sessionManager.hasValidSession()) {
+            // Redirect to login if no valid session
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
 
         initViews();
         setupTabs();
@@ -88,7 +100,14 @@ public class ChatListActivity extends AppCompatActivity {
     }
 
     private void fetchChatsFromApi() {
-        String userId = "68727d12f34219a6bffbf502";
+        String userId = sessionManager.getCurrentUserId();
+        if (userId == null) {
+            Toast.makeText(this, "User session expired. Please login again.", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
+        
         ApiService apiService = ApiClient.getService();
         Call<List<ChatResponse>> call = apiService.getChats(userId);
 
@@ -101,12 +120,25 @@ public class ChatListActivity extends AppCompatActivity {
                         String messageText = "";
 
                         if (chat.getLastMessage() != null) {
-                            messageText = chat.getLastMessage().getText(); // ✅ embedded object
+                            MessageResponse lastMsg = chat.getLastMessage();
+                            String senderName = lastMsg.getSenderID() != null
+                                    ? lastMsg.getSenderID().getFullname()
+                                    : "Unknown";
+
+                            messageText = senderName + ": " + lastMsg.getText();
+                        }
+
+                        // Determine chat name
+                        String chatName;
+                        if (chat.getGroupName() != null) {
+                            chatName = chat.getGroupName();
+                        } else {
+                            chatName = getOtherUserName(chat, userId);
                         }
 
                         chatList.add(new ChatItem(
                                 chat.getId(),
-                                chat.getGroupName() != null ? chat.getGroupName() : "Private chat",
+                                chatName,
                                 messageText,
                                 chat.getUpdateAtTime(),
                                 chat.getGroupAvatar(),
@@ -115,16 +147,38 @@ public class ChatListActivity extends AppCompatActivity {
                     }
                     chatAdapter.notifyDataSetChanged();
                 } else {
-                    Toast.makeText(ChatListActivity.this, "Failed to load chats", Toast.LENGTH_SHORT).show();
+                    String errorMessage = "Unknown error";
+                    try {
+                        if (response.errorBody() != null) {
+                            errorMessage = response.errorBody().string();
+                        }
+                    } catch (Exception e) {
+                        errorMessage = e.getMessage();
+                    }
+
+                    Toast.makeText(ChatListActivity.this, "Failed to load chats: " + errorMessage, Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onFailure(Call<List<ChatResponse>> call, Throwable t) {
-                Log.e("ChatList", "API error", t);
-                Toast.makeText(ChatListActivity.this, "Error fetching chat data", Toast.LENGTH_SHORT).show();
+                String errorMessage = t.getMessage() != null ? t.getMessage() : "Unknown error";
+                Log.e("ChatList", "Error fetching chat data", t); // Full stack trace in Logcat
+                Toast.makeText(ChatListActivity.this, "Error: " + errorMessage, Toast.LENGTH_LONG).show();
             }
+
         });
+    }
+
+    private String getOtherUserName(ChatResponse chat, String currentUserId) {
+        if (chat.getParticipants() != null) {
+            for (fpt.edu.vn.fchat_mobile.models.Participant participant : chat.getParticipants()) {
+                if (!currentUserId.equals(participant.getId())) {
+                    return participant.getFullname() != null ? participant.getFullname() : participant.getUsername();
+                }
+            }
+        }
+        return "Unknown User";
     }
 
 }

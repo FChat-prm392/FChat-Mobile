@@ -16,6 +16,7 @@ import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.repositories.AuthRepository;
+import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -28,6 +29,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextView forgetPasswordText, registerText;
 
     private AuthRepository authRepository;
+    private SessionManager sessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +49,7 @@ public class LoginActivity extends AppCompatActivity {
         forgetPasswordText = findViewById(R.id.forgetPasswordText);
         registerText = findViewById(R.id.registerText);
         authRepository = new AuthRepository();
+        sessionManager = new SessionManager(this);
     }
 
     private void setupListeners() {
@@ -88,6 +91,9 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().getUser() != null) {
+                    // Save user session
+                    sessionManager.saveUserSession(response.body().getUser());
+                    
                     String name = response.body().getUser().getFullname();
                     Toast.makeText(LoginActivity.this, "Welcome " + name, Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(LoginActivity.this, ChatListActivity.class));

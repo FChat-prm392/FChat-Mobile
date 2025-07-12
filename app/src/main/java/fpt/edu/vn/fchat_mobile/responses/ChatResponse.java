@@ -2,6 +2,10 @@ package fpt.edu.vn.fchat_mobile.responses;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.List;
+
+import fpt.edu.vn.fchat_mobile.models.Participant;
+
 public class ChatResponse {
     @SerializedName("id")
     private String id;
@@ -15,6 +19,11 @@ public class ChatResponse {
     @SerializedName("createAt")
     private String createAt;
 
+    @SerializedName("participants")
+    private List<Participant> participants;
+
+    @SerializedName("isGroup")
+    private boolean isGroup;
     @SerializedName("updateAt")
     private String updateAt;
 
@@ -24,6 +33,9 @@ public class ChatResponse {
     public String getId() {
         return id;
     }
+
+    public boolean isGroup() { return isGroup; }
+    public List<Participant> getParticipants() { return participants; }
 
     public String getGroupName() {
         return groupName;

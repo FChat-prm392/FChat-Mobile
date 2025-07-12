@@ -2,13 +2,12 @@ package fpt.edu.vn.fchat_mobile.responses;
 
 import com.google.gson.annotations.SerializedName;
 
-public class MessageResponse {
-
+public class SendMessageResponse {
     @SerializedName("_id")
     private String id;
 
     @SerializedName("senderID")
-    private SenderResponse senderID;
+    private String senderID; // This is a string when sending
 
     @SerializedName("chatID")
     private String chatID;
@@ -26,7 +25,7 @@ public class MessageResponse {
         return id;
     }
 
-    public SenderResponse  getSenderID() {
+    public String getSenderID() {
         return senderID;
     }
 
@@ -44,28 +43,5 @@ public class MessageResponse {
 
     public String getCreateAt() {
         return createAt;
-    }
-
-    public static class Sender {
-        @SerializedName("_id")
-        private String id;
-
-        @SerializedName("fullname")
-        private String fullname;
-
-        @SerializedName("username")
-        private String username;
-
-        public String getId() {
-            return id;
-        }
-
-        public String getFullname() {
-            return fullname;
-        }
-
-        public String getUsername() {
-            return username;
-        }
     }
 }

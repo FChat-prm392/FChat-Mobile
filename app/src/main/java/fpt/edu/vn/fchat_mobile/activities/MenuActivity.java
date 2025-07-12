@@ -11,13 +11,14 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 
 public class MenuActivity extends AppCompatActivity {
 
     ImageView avatarView;
     TextView nameView;
     Button settingsButton;
-    SharedPreferences prefs;
+    SessionManager sessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,8 +28,23 @@ public class MenuActivity extends AppCompatActivity {
         avatarView = findViewById(R.id.avatar);
         nameView = findViewById(R.id.name);
         settingsButton = findViewById(R.id.btn_settings);
+        
+        sessionManager = new SessionManager(this);
+        
+        Button logoutButton = findViewById(R.id.btn_logout);
+        logoutButton.setOnClickListener(v -> {
+            sessionManager.logout();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+        });
+        
+        // Check if user is logged in
+        if (!sessionManager.hasValidSession()) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
 
-        prefs = getSharedPreferences("user", MODE_PRIVATE);
         loadUserData();
 
         settingsButton.setOnClickListener(v -> {
@@ -43,14 +59,18 @@ public class MenuActivity extends AppCompatActivity {
     }
 
     private void loadUserData() {
-        String username = prefs.getString("username", "admin");
-        String avatarUri = prefs.getString("avatar_uri", null);
-
-        nameView.setText(username);
-        if (avatarUri != null) {
-            avatarView.setImageURI(Uri.parse(avatarUri));
-        } else {
-            avatarView.setImageResource(R.drawable.ic_avatar);
+        String fullname = sessionManager.getCurrentUserFullname();
+        String username = sessionManager.getCurrentUserUsername();
+        
+        // Use fullname if available, otherwise use username
+        String displayName = (fullname != null && !fullname.isEmpty()) ? fullname : username;
+        if (displayName == null) {
+            displayName = "User";
         }
+        
+        nameView.setText(displayName);
+        
+        // You can add avatar loading logic here if you store avatar URLs in session
+        // For now, keep the default avatar
     }
 }
