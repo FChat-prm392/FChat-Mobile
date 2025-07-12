@@ -1,7 +1,7 @@
 package fpt.edu.vn.fchat_mobile.services;
 
-import fpt.edu.vn.fchat_mobile.models.LoginRequest;
-import fpt.edu.vn.fchat_mobile.models.LoginResponse;
+import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
+import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import retrofit2.http.Body;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;

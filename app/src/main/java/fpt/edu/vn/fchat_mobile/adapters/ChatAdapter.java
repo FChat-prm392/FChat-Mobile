@@ -1,4 +1,4 @@
-package fpt.edu.vn.fchat_mobile.models;
+package fpt.edu.vn.fchat_mobile.adapters;
 
 import android.content.Context;
 import android.content.Intent;
@@ -15,6 +15,7 @@ import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.activities.ChatDetailActivity;
+import fpt.edu.vn.fchat_mobile.items.ChatItem;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
 

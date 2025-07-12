@@ -1,4 +1,4 @@
-package fpt.edu.vn.fchat_mobile.models;
+package fpt.edu.vn.fchat_mobile.requests;
 
 public class LoginRequest {
     private String email;

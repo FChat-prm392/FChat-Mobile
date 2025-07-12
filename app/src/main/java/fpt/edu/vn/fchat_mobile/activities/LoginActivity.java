@@ -13,8 +13,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import fpt.edu.vn.fchat_mobile.R;
-import fpt.edu.vn.fchat_mobile.models.LoginRequest;
-import fpt.edu.vn.fchat_mobile.models.LoginResponse;
+import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
+import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.repositories.AuthRepository;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -22,18 +22,23 @@ import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity {
 
-    TextInputLayout emailLayout, passwordLayout;
-    TextInputEditText emailInput, passwordInput;
-    MaterialButton loginButton;
-    TextView forgetPasswordText, registerText;
+    private TextInputLayout emailLayout, passwordLayout;
+    private TextInputEditText emailInput, passwordInput;
+    private MaterialButton loginButton;
+    private TextView forgetPasswordText, registerText;
 
-    AuthRepository authRepository;
+    private AuthRepository authRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        initViews();
+        setupListeners();
+    }
+
+    private void initViews() {
         emailLayout = findViewById(R.id.emailLayout);
         passwordLayout = findViewById(R.id.passwordLayout);
         emailInput = findViewById(R.id.emailInput);
@@ -41,9 +46,10 @@ public class LoginActivity extends AppCompatActivity {
         loginButton = findViewById(R.id.loginButton);
         forgetPasswordText = findViewById(R.id.forgetPasswordText);
         registerText = findViewById(R.id.registerText);
-
         authRepository = new AuthRepository();
+    }
 
+    private void setupListeners() {
         loginButton.setOnClickListener(v -> {
             String email = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
             String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
@@ -69,13 +75,11 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        forgetPasswordText.setOnClickListener(v -> {
-            startActivity(new Intent(LoginActivity.this, ForgetPasswordActivity.class));
-        });
+        forgetPasswordText.setOnClickListener(v ->
+                startActivity(new Intent(this, ForgetPasswordActivity.class)));
 
-        registerText.setOnClickListener(v -> {
-            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
-        });
+        registerText.setOnClickListener(v ->
+                startActivity(new Intent(this, RegisterActivity.class)));
     }
 
     private void login(String email, String password) {
@@ -83,9 +87,9 @@ public class LoginActivity extends AppCompatActivity {
         authRepository.login(request, new Callback<LoginResponse>() {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    // Login success
-                    Toast.makeText(LoginActivity.this, "Welcome " + response.body().getUsername(), Toast.LENGTH_SHORT).show();
+                if (response.isSuccessful() && response.body() != null && response.body().getUser() != null) {
+                    String name = response.body().getUser().getFullname();
+                    Toast.makeText(LoginActivity.this, "Welcome " + name, Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(LoginActivity.this, ChatListActivity.class));
                     finish();
                 } else {
