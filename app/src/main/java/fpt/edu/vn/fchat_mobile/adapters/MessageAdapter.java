@@ -1,6 +1,5 @@
 package fpt.edu.vn.fchat_mobile.adapters;
 
-import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
-import fpt.edu.vn.fchat_mobile.models.MessageItem;
+import fpt.edu.vn.fchat_mobile.items.MessageItem;
 
 public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 

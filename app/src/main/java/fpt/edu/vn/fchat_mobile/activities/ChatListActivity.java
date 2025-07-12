@@ -15,8 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
-import fpt.edu.vn.fchat_mobile.models.ChatAdapter;
-import fpt.edu.vn.fchat_mobile.models.ChatItem;
+import fpt.edu.vn.fchat_mobile.adapters.ChatAdapter;
+import fpt.edu.vn.fchat_mobile.items.ChatItem;
 
 public class ChatListActivity extends AppCompatActivity {
 

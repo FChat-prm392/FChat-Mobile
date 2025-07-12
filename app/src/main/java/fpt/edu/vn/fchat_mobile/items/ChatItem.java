@@ -1,4 +1,4 @@
-package fpt.edu.vn.fchat_mobile.models;
+package fpt.edu.vn.fchat_mobile.items;
 
 public class ChatItem {
     public String name, message, time;

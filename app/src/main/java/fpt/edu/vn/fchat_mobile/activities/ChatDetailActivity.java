@@ -27,7 +27,7 @@ import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.adapters.MessageAdapter;
-import fpt.edu.vn.fchat_mobile.models.MessageItem;
+import fpt.edu.vn.fchat_mobile.items.MessageItem;
 
 public class ChatDetailActivity extends AppCompatActivity {
 

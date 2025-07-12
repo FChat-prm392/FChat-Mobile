@@ -1,7 +1,7 @@
 package fpt.edu.vn.fchat_mobile.repositories;
 
-import fpt.edu.vn.fchat_mobile.models.LoginRequest;
-import fpt.edu.vn.fchat_mobile.models.LoginResponse;
+import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
+import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
 import retrofit2.Call;
