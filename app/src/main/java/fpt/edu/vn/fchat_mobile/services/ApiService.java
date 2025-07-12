@@ -13,4 +13,18 @@ public interface ApiService {
             @Field("email") String email,
             @Field("password") String password
     );
+
+    @FormUrlEncoded
+    @POST("api/register")
+    Call<LoginResponse> register(
+            @Field("username") String username,
+            @Field("email") String email,
+            @Field("password") String password
+    );
+
+    @FormUrlEncoded
+    @POST("api/forgot-password")
+    Call<LoginResponse> resetPassword(
+            @Field("email") String email
+    );
 }

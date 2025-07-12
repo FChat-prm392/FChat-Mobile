@@ -60,6 +60,9 @@
 
         <!-- Đăng ký -->
         <activity
+            android:name=".activities.ForgetPasswordActivity2"
+            android:exported="false" />
+        <activity
             android:name=".activities.RegisterActivity"
             android:exported="false" />
 
