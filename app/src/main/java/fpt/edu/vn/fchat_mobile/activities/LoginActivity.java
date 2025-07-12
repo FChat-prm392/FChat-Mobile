@@ -21,6 +21,10 @@ public class LoginActivity extends AppCompatActivity {
     MaterialButton loginButton;
     TextView forgetPasswordText, registerText;
 
+    // User cài sẵn
+    private static final String HARDCODED_USER = "admin";
+    private static final String HARDCODED_PASS = "123";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,8 +39,8 @@ public class LoginActivity extends AppCompatActivity {
         registerText = findViewById(R.id.registerText);
 
         loginButton.setOnClickListener(v -> {
-            String email = emailInput.getText().toString().trim();
-            String password = passwordInput.getText().toString().trim();
+            String email = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
+            String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
 
             boolean isValid = true;
 
@@ -55,19 +59,22 @@ public class LoginActivity extends AppCompatActivity {
             }
 
             if (isValid) {
-                // TODO: Replace with API login call
-                Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show();
+                if (email.equals(HARDCODED_USER) && password.equals(HARDCODED_PASS)) {
+                    Intent intent = new Intent(LoginActivity.this, ChatListActivity.class);
+                    startActivity(intent);
+                    finish(); // để không quay lại login khi nhấn Back
+                } else {
+                    Toast.makeText(this, "Sai tài khoản hoặc mật khẩu", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
         forgetPasswordText.setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, ForgetPasswordActivity.class);
-            startActivity(intent);
+            startActivity(new Intent(LoginActivity.this, ForgetPasswordActivity.class));
         });
 
         registerText.setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-            startActivity(intent);
+            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
         });
     }
 }
