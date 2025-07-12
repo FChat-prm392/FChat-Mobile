@@ -111,14 +111,14 @@
 
         <EditText
             android:id="@+id/edit_message"
-            android:layout_weight="1"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@drawable/search_background"
             android:hint="Aa"
             android:paddingHorizontal="12dp"
             android:textColor="#000000"
-            android:textColorHint="#888888"
-            android:background="@drawable/search_background" />
+            android:textColorHint="#888888" />
 
         <ImageView
             android:id="@+id/btn_camera"
