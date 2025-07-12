@@ -13,6 +13,12 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.models.LoginRequest;
+import fpt.edu.vn.fchat_mobile.models.LoginResponse;
+import fpt.edu.vn.fchat_mobile.repositories.AuthRepository;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -21,9 +27,7 @@ public class LoginActivity extends AppCompatActivity {
     MaterialButton loginButton;
     TextView forgetPasswordText, registerText;
 
-    // User cài sẵn
-    private static final String HARDCODED_USER = "admin";
-    private static final String HARDCODED_PASS = "123";
+    AuthRepository authRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +41,8 @@ public class LoginActivity extends AppCompatActivity {
         loginButton = findViewById(R.id.loginButton);
         forgetPasswordText = findViewById(R.id.forgetPasswordText);
         registerText = findViewById(R.id.registerText);
+
+        authRepository = new AuthRepository();
 
         loginButton.setOnClickListener(v -> {
             String email = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
@@ -59,13 +65,7 @@ public class LoginActivity extends AppCompatActivity {
             }
 
             if (isValid) {
-                if (email.equals(HARDCODED_USER) && password.equals(HARDCODED_PASS)) {
-                    Intent intent = new Intent(LoginActivity.this, ChatListActivity.class);
-                    startActivity(intent);
-                    finish(); // để không quay lại login khi nhấn Back
-                } else {
-                    Toast.makeText(this, "Sai tài khoản hoặc mật khẩu", Toast.LENGTH_SHORT).show();
-                }
+                login(email, password);
             }
         });
 
@@ -75,6 +75,28 @@ public class LoginActivity extends AppCompatActivity {
 
         registerText.setOnClickListener(v -> {
             startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
+        });
+    }
+
+    private void login(String email, String password) {
+        LoginRequest request = new LoginRequest(email, password);
+        authRepository.login(request, new Callback<LoginResponse>() {
+            @Override
+            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // Login success
+                    Toast.makeText(LoginActivity.this, "Welcome " + response.body().getUsername(), Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(LoginActivity.this, ChatListActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(LoginActivity.this, "Invalid credentials", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<LoginResponse> call, Throwable t) {
+                Toast.makeText(LoginActivity.this, "Login failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         });
     }
 }

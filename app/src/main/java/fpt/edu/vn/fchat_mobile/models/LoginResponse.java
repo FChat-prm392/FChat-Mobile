@@ -1,19 +1,12 @@
 package fpt.edu.vn.fchat_mobile.models;
 
 public class LoginResponse {
-    private boolean success;
-    private String token;
-    private String message;
+    private String id;
+    private String username;
+    private String email;
 
-    public boolean isSuccess() {
-        return success;
-    }
-
-    public String getToken() {
-        return token;
-    }
-
-    public String getMessage() {
-        return message;
-    }
+    public String getId() { return id; }
+    public String getUsername() { return username; }
+    public String getEmail() { return email; }
 }
+
