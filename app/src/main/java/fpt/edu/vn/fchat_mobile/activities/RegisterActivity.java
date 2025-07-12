@@ -28,6 +28,12 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.io.IOException;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
+import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
+import fpt.edu.vn.fchat_mobile.repositories.AuthRepository;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -42,6 +48,8 @@ public class RegisterActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERMISSION_REQUEST = 100;
     private static final int STORAGE_PERMISSION_REQUEST = 101;
+
+    private final AuthRepository authRepository = new AuthRepository();
 
     private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -67,13 +75,11 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
-
         initViews();
         setupGenderDropdown();
 
         chooseImageButton.setOnClickListener(v -> requestGalleryPermission());
         takePhotoButton.setOnClickListener(v -> requestCameraPermission());
-
         registerButton.setOnClickListener(v -> validateAndRegister());
     }
 
@@ -102,8 +108,7 @@ public class RegisterActivity extends AppCompatActivity {
 
     private void setupGenderDropdown() {
         ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_dropdown_item_1line,
+                this, android.R.layout.simple_dropdown_item_1line,
                 new String[]{"Male", "Female", "Other"}
         );
         genderInput.setAdapter(genderAdapter);
@@ -153,7 +158,7 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void validateAndRegister() {
-        String fullName = fullNameInput.getText().toString().trim();
+        String fullname = fullNameInput.getText().toString().trim();
         String username = usernameInput.getText().toString().trim();
         String email = emailInput.getText().toString().trim();
         String phone = phoneInput.getText().toString().trim();
@@ -163,59 +168,68 @@ public class RegisterActivity extends AppCompatActivity {
 
         boolean isValid = true;
 
-        if (TextUtils.isEmpty(fullName)) {
-            fullNameLayout.setError("Full Name is required");
-            isValid = false;
+        if (TextUtils.isEmpty(fullname)) {
+            fullNameLayout.setError("Required"); isValid = false;
         } else fullNameLayout.setError(null);
 
         if (TextUtils.isEmpty(username)) {
-            usernameLayout.setError("Username is required");
-            isValid = false;
+            usernameLayout.setError("Required"); isValid = false;
         } else usernameLayout.setError(null);
 
         if (TextUtils.isEmpty(email) || !email.contains("@")) {
-            emailLayout.setError("Valid email required");
-            isValid = false;
+            emailLayout.setError("Invalid email"); isValid = false;
         } else emailLayout.setError(null);
 
         if (TextUtils.isEmpty(phone) || phone.length() < 8) {
-            phoneLayout.setError("Invalid phone number");
-            isValid = false;
+            phoneLayout.setError("Invalid phone"); isValid = false;
         } else phoneLayout.setError(null);
 
         if (TextUtils.isEmpty(gender)) {
-            genderLayout.setError("Please select gender");
-            isValid = false;
+            genderLayout.setError("Required"); isValid = false;
         } else genderLayout.setError(null);
 
         if (TextUtils.isEmpty(password) || password.length() < 6) {
-            passwordLayout.setError("Minimum 6 characters");
-            isValid = false;
+            passwordLayout.setError("Min 6 chars"); isValid = false;
         } else passwordLayout.setError(null);
 
         if (!password.equals(confirmPassword)) {
-            confirmPasswordLayout.setError("Passwords do not match");
-            isValid = false;
+            confirmPasswordLayout.setError("Passwords mismatch"); isValid = false;
         } else confirmPasswordLayout.setError(null);
 
-        if (selectedImageUri == null && selectedCameraBitmap == null) {
-            Toast.makeText(this, "Please add a profile picture", Toast.LENGTH_SHORT).show();
-            isValid = false;
-        }
+        if (!isValid) return;
 
-        if (isValid) {
-            Toast.makeText(this, "Registering...", Toast.LENGTH_SHORT).show();
-            // TODO: Send form + image to backend
-        }
+        RegisterRequest request = new RegisterRequest(
+                fullname, username, email, password, gender, phone,
+                "N/A", // imageURL
+                "Online.", // currentStatus
+                "dummyfcmtoken" // FCM placeholder
+        );
+
+        authRepository.register(request, new Callback<RegisterResponse>() {
+            @Override
+            public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(RegisterActivity.this, "Registered successfully!", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(RegisterActivity.this, "Register failed: In  valid data", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RegisterResponse> call, Throwable t) {
+                Toast.makeText(RegisterActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == CAMERA_PERMISSION_REQUEST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == CAMERA_PERMISSION_REQUEST && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             openCamera();
-        } else if (requestCode == STORAGE_PERMISSION_REQUEST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        } else if (requestCode == STORAGE_PERMISSION_REQUEST && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             openGallery();
         } else {
             Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
