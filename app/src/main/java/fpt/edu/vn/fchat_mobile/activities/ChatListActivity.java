@@ -36,7 +36,7 @@ public class ChatListActivity extends AppCompatActivity {
     private void initViews() {
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        chatAdapter = new ChatAdapter(chatList);
+        chatAdapter = new ChatAdapter(this, chatList);
         recyclerView.setAdapter(chatAdapter);
 
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);

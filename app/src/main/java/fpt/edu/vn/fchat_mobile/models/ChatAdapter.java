@@ -1,5 +1,7 @@
 package fpt.edu.vn.fchat_mobile.models;
 
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,12 +14,15 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.activities.ChatDetailActivity;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
 
+    private final Context context;
     private final List<ChatItem> chatList;
 
-    public ChatAdapter(List<ChatItem> chatList) {
+    public ChatAdapter(Context context, List<ChatItem> chatList) {
+        this.context = context;
         this.chatList = chatList;
     }
 
@@ -37,6 +42,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         holder.time.setText(chat.time);
         holder.avatar.setImageResource(chat.avatarResId);
         holder.onlineDot.setVisibility(chat.isOnline ? View.VISIBLE : View.GONE);
+
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, ChatDetailActivity.class);
+            intent.putExtra("name", chat.name);
+            intent.putExtra("status", "Hoạt động " + chat.time + " trước");
+            intent.putExtra("avatarResId", chat.avatarResId);
+            context.startActivity(intent);
+        });
     }
 
     @Override

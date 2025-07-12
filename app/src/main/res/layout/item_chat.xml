@@ -1,4 +1,3 @@
-<!-- res/layout/item_chat.xml -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="horizontal"
     android:padding="12dp"

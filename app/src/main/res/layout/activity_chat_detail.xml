@@ -1,0 +1,152 @@
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="#FFFFFF"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <!-- TOP BAR -->
+    <RelativeLayout
+        android:id="@+id/header"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp"
+        android:paddingHorizontal="10dp"
+        android:elevation="4dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/avatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_avatar"
+            android:scaleType="centerCrop"
+            android:layout_alignParentStart="true" />
+
+        <LinearLayout
+            android:layout_toEndOf="@id/avatar"
+            android:orientation="vertical"
+            android:layout_marginStart="10dp"
+            android:layout_centerVertical="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/name"
+                android:text="."
+                android:textColor="#000000"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:id="@+id/status"
+                android:text="Hoạt động 5 phút trước"
+                android:textColor="#888888"
+                android:textSize="13sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btn_call"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_call"
+            android:layout_centerVertical="true"
+            app:tint="#000000" />
+
+        <ImageView
+            android:id="@+id/btn_video"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_toStartOf="@id/btn_call"
+            android:layout_marginEnd="12dp"
+            android:src="@drawable/ic_video"
+            android:layout_centerVertical="true"
+            app:tint="#000000" />
+    </RelativeLayout>
+
+    <!-- MESSAGE LIST -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/message_list"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintBottom_toTopOf="@id/message_input_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- BOTTOM INPUT BAR -->
+    <LinearLayout
+        android:id="@+id/message_input_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:paddingTop="6dp"
+        android:paddingBottom="10dp"
+        android:layout_marginHorizontal="8dp"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_add"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="6dp"
+            app:tint="#000000" />
+
+        <EditText
+            android:id="@+id/edit_message"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:hint="Aa"
+            android:paddingHorizontal="12dp"
+            android:textColor="#000000"
+            android:textColorHint="#888888"
+            android:background="@drawable/search_background" />
+
+        <ImageView
+            android:id="@+id/btn_camera"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_camera"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="6dp"
+            app:tint="#000000" />
+
+        <ImageView
+            android:id="@+id/btn_mic"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_mic"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="6dp"
+            android:visibility="visible"
+            app:tint="#000000" />
+
+        <ImageView
+            android:id="@+id/btn_send"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_send"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="6dp"
+            android:visibility="gone"
+            app:tint="#000000" />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
