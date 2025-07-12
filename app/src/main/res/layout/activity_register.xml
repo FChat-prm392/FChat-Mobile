@@ -1,24 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:padding="24dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/main_background"
+    android:padding="24dp">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal">
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/registerTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/akaya_telivigala"
             android:text="Register New Account"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp"/>
+            android:textColor="#FF0000"
+            android:textSize="34sp"
+            android:textStyle="bold" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/fullNameLayout"
@@ -29,56 +32,56 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/fullNameInput"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/usernameLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Username"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            android:hint="Username">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/usernameInput"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/emailLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Email"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            android:hint="Email">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/emailInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textEmailAddress"/>
+                android:inputType="textEmailAddress" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/phoneLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Phone Number"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            android:hint="Phone Number">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/phoneInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="phone"/>
+                android:inputType="phone" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/genderLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="   Gender"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            android:hint="   Gender">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/genderInput"
@@ -93,69 +96,71 @@
             android:id="@+id/passwordLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Password"
             android:layout_marginTop="12dp"
+            android:hint="Password"
             app:endIconMode="password_toggle">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/passwordInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textPassword"/>
+                android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/confirmPasswordLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Confirm Password"
             android:layout_marginTop="12dp"
+            android:hint="Confirm Password"
             app:endIconMode="password_toggle">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/confirmPasswordInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textPassword"/>
+                android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:id="@+id/imageLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
             android:text="Profile Picture"
-            android:textStyle="bold"
-            android:layout_marginTop="20dp"/>
+            android:textStyle="bold" />
 
         <ImageView
             android:id="@+id/profileImage"
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:layout_marginTop="8dp"
             android:layout_gravity="center"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/image_border"
             android:scaleType="centerCrop"
-            android:src="@drawable/ic_launcher_foreground"
-            android:background="@drawable/image_border"/>
+            android:src="@drawable/default_profile_icon" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/takePhotoButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:text="Take Photo"
-            android:layout_marginTop="12dp"/>
+            app:backgroundTint="#E91E63" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/chooseImageButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="Choose from Phone"
-            android:layout_marginTop="8dp"/>
+            app:backgroundTint="#E91E63" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/registerButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Register"
-            android:layout_marginTop="24dp"/>
+            android:layout_marginTop="24dp"
+            android:text="Register" />
     </LinearLayout>
 </ScrollView>

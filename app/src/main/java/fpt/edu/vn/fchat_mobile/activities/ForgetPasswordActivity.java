@@ -1,5 +1,6 @@
 package fpt.edu.vn.fchat_mobile.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Toast;
@@ -30,12 +31,17 @@ public class ForgetPasswordActivity extends AppCompatActivity {
         resetButton.setOnClickListener(v -> {
             String email = emailInput.getText().toString().trim();
 
-            if (TextUtils.isEmpty(email)) {
-                emailLayout.setError("Email is required");
+            if (TextUtils.isEmpty(email) || !email.contains("@")) {
+                emailLayout.setError("Enter a valid email");
             } else {
                 emailLayout.setError(null);
-                Toast.makeText(this, "Password reset request sent", Toast.LENGTH_SHORT).show();
-                // TODO: Call forgot password API
+
+                // TODO: Verify email with backend
+                Toast.makeText(this, "Verification link sent!", Toast.LENGTH_SHORT).show();
+
+                Intent intent = new Intent(this, ForgetPasswordActivity2.class);
+                intent.putExtra("email", email); // optional
+                startActivity(intent);
             }
         });
     }
