@@ -26,6 +26,7 @@ import java.util.TimeZone;
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.activities.ChatDetailActivity;
 import fpt.edu.vn.fchat_mobile.items.ChatItem;
+import fpt.edu.vn.fchat_mobile.views.TypingIndicatorView;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
 
@@ -50,7 +51,18 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     public void onBindViewHolder(@NonNull ChatViewHolder holder, int position) {
         ChatItem chat = chatList.get(position);
         holder.name.setText(chat.getName());
-        holder.lastMessage.setText(chat.getMessage());
+        
+        if (chat.isTyping()) {
+            holder.typingIndicator.setVisibility(View.VISIBLE);
+            holder.lastMessage.setVisibility(View.GONE);
+            holder.typingIndicator.showTyping(chat.getTypingUser());
+        } else {
+            holder.typingIndicator.setVisibility(View.GONE);
+            holder.lastMessage.setVisibility(View.VISIBLE);
+            holder.lastMessage.setText(chat.getMessage());
+            holder.typingIndicator.hideTyping();
+        }
+        
         holder.time.setText(chat.getTime());
 
         // Load avatar from URL using Glide
@@ -59,33 +71,27 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
                 .placeholder(R.drawable.ic_avatar)
                 .into(holder.avatar);
 
-        // Show online dot and status for one-on-one chats only
         if (!chat.isGroup()) {
             holder.onlineDot.setVisibility(View.VISIBLE);
             holder.onlineDot.setBackgroundResource(
                     chat.isOnline() ? R.drawable.online_dot : R.drawable.offline_dot
             );
             
-            // Display message content only
-            holder.lastMessage.setText(chat.getMessage());
+            if (!chat.isTyping()) {
+                holder.lastMessage.setText(chat.getMessage());
+            }
             
-            // Handle status display in the time field
             if (chat.isOnline()) {
                 holder.time.setText("Online");
             } else if (chat.getLastOnline() != null) {
                 try {
-                    Log.d(TAG, "Parsing lastOnline: " + chat.getLastOnline());
-                    // Parse ISO 8601 format (e.g., "2025-07-13T07:06:55.814Z")
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
-                    sdf.setTimeZone(TimeZone.getTimeZone("UTC")); // Input is UTC
+                    sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
                     Date lastOnlineDate = sdf.parse(chat.getLastOnline());
-                    Log.d(TAG, "Parsed UTC date: " + lastOnlineDate);
 
-                    // Convert to GMT+7
                     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
                     calendar.setTime(lastOnlineDate);
                     long gmtPlus7Time = calendar.getTimeInMillis();
-                    Log.d(TAG, "GMT+7 time (ms): " + gmtPlus7Time + ", Current time (ms): " + System.currentTimeMillis());
 
                     String relativeTime = DateUtils.getRelativeTimeSpanString(
                             gmtPlus7Time,
@@ -93,33 +99,22 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
                             DateUtils.MINUTE_IN_MILLIS,
                             DateUtils.FORMAT_ABBREV_RELATIVE
                     ).toString();
-                    Log.d(TAG, "Relative time: " + relativeTime);
-
-                    // Set Vietnamese locale for translation
-                    String translatedTime = DateUtils.getRelativeTimeSpanString(
-                            gmtPlus7Time,
-                            System.currentTimeMillis(),
-                            DateUtils.MINUTE_IN_MILLIS,
-                            DateUtils.FORMAT_ABBREV_RELATIVE
-                    ).toString();
-                    Log.d(TAG, "Translated relative time (vi): " + translatedTime);
 
                     holder.time.setText("Last seen " + translatedTime);
                 } catch (ParseException e) {
-                    Log.e(TAG, "ParseException for lastOnline: " + chat.getLastOnline(), e);
-                    holder.time.setText("Last seen " + chat.getLastOnline()); // Debug
+                    holder.time.setText("Last seen " + chat.getLastOnline());
                 } catch (Exception e) {
-                    Log.e(TAG, "Unexpected error for lastOnline: " + chat.getLastOnline(), e);
                     holder.time.setText("Offline");
                 }
             } else {
-                Log.d(TAG, "lastOnline is null for chat: " + chat.getName());
                 holder.time.setText("Offline");
             }
         } else {
             holder.onlineDot.setVisibility(View.GONE);
-            holder.lastMessage.setText(chat.getMessage());
-            holder.time.setText(chat.getTime()); // Show original time for group chats
+            if (!chat.isTyping()) {
+                holder.lastMessage.setText(chat.getMessage());
+            }
+            holder.time.setText(chat.getTime());
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -132,34 +127,26 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
                     status = "Online";
                 } else if (chat.getLastOnline() != null) {
                     try {
-                        Log.d(TAG, "Parsing lastOnline for status: " + chat.getLastOnline());
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
                         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
                         Date lastOnlineDate = sdf.parse(chat.getLastOnline());
-                        Log.d(TAG, "Parsed UTC date for status: " + lastOnlineDate);
 
                         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
                         calendar.setTime(lastOnlineDate);
                         long gmtPlus7Time = calendar.getTimeInMillis();
-                        Log.d(TAG, "GMT+7 time for status (ms): " + gmtPlus7Time);
 
-                        Locale vietnameseLocale = new Locale("vi", "VN");
                         status = "Last seen " + DateUtils.getRelativeTimeSpanString(
                                 gmtPlus7Time,
                                 System.currentTimeMillis(),
                                 DateUtils.MINUTE_IN_MILLIS,
                                 DateUtils.FORMAT_ABBREV_RELATIVE
                         ).toString();
-                        Log.d(TAG, "Status relative time: " + status);
                     } catch (ParseException e) {
-                        Log.e(TAG, "ParseException for status: " + chat.getLastOnline(), e);
-                        status = "Last seen " + chat.getLastOnline(); // Debug
+                        status = "Last seen " + chat.getLastOnline();
                     } catch (Exception e) {
-                        Log.e(TAG, "Unexpected error for status: " + chat.getLastOnline(), e);
                         status = "Offline";
                     }
                 } else {
-                    Log.d(TAG, "lastOnline is null for status: " + chat.getName());
                     status = "Offline";
                 }
             } else {
@@ -176,10 +163,23 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         return chatList.size();
     }
 
+    public void updateTypingStatus(String chatId, boolean isTyping, String typingUser) {
+        for (int i = 0; i < chatList.size(); i++) {
+            ChatItem chat = chatList.get(i);
+            if (chat.getId().equals(chatId)) {
+                chat.setTyping(isTyping);
+                chat.setTypingUser(typingUser);
+                notifyItemChanged(i);
+                break;
+            }
+        }
+    }
+
     static class ChatViewHolder extends RecyclerView.ViewHolder {
         ImageView avatar;
         View onlineDot;
         TextView name, lastMessage, time;
+        TypingIndicatorView typingIndicator;
 
         public ChatViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -188,6 +188,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
             name = itemView.findViewById(R.id.name);
             lastMessage = itemView.findViewById(R.id.last_message);
             time = itemView.findViewById(R.id.time);
+            typingIndicator = itemView.findViewById(R.id.typing_indicator);
         }
     }
 }

@@ -159,6 +159,48 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
                 });
             }
         });
+
+        // Add typing event listeners for chat list
+        socket.on("typing-start", new Emitter.Listener() {
+            @Override
+            public void call(Object... args) {
+                JSONObject data = (JSONObject) args[0];
+                try {
+                    String chatId = data.getString("chatId");
+                    String userId = data.getString("userId");
+                    String userName = data.getString("userName");
+                    String currentUserId = sessionManager.getCurrentUserId();
+                    
+                    if (!userId.equals(currentUserId)) {
+                        runOnUiThread(() -> {
+                            chatAdapter.updateTypingStatus(chatId, true, userName);
+                        });
+                    }
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error parsing typing-start event", e);
+                }
+            }
+        });
+
+        socket.on("typing-stop", new Emitter.Listener() {
+            @Override
+            public void call(Object... args) {
+                JSONObject data = (JSONObject) args[0];
+                try {
+                    String chatId = data.getString("chatId");
+                    String userId = data.getString("userId");
+                    String currentUserId = sessionManager.getCurrentUserId();
+                    
+                    if (!userId.equals(currentUserId)) {
+                        runOnUiThread(() -> {
+                            chatAdapter.updateTypingStatus(chatId, false, null);
+                        });
+                    }
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error parsing typing-stop event", e);
+                }
+            }
+        });
     }
 
     private void setupTabs() {

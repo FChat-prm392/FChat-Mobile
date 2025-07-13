@@ -39,7 +39,7 @@ app.use('/api/friendships', friendshipRoutes);
 io.on('connection', (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);
 
-  socket.on('register-user', (userId) => {
+  socket.on('register-user', async (userId) => {
     console.log(`👤 Registering user: ${userId} with socket: ${socket.id}`);
     const existingSocketId = onlineUsersManager.getSocketId(userId);
     if (existingSocketId && existingSocketId !== socket.id) {
@@ -49,12 +49,35 @@ io.on('connection', (socket) => {
 
     onlineUsersManager.add(userId, socket.id);
     io.emit('user-status', { userId, isOnline: true, lastOnline: null });
-    console.log(`✅ User ${userId} registered and online`);
+    
+    // Auto-join all user's chat rooms when they connect
+    try {
+      const userChats = await Chat.find({
+        participants: userId
+      }).select('_id');
+      
+      for (const chat of userChats) {
+        socket.join(chat._id.toString());
+        console.log(`🏠 Auto-joined user ${userId} to chat room ${chat._id}`);
+      }
+      
+      console.log(`✅ User ${userId} registered and joined ${userChats.length} chat rooms`);
+    } catch (error) {
+      console.error(`❌ Error auto-joining chat rooms for user ${userId}:`, error);
+      console.log(`✅ User ${userId} registered (without auto-join due to error)`);
+    }
   });
 
   socket.on('join-room', (chatId) => {
-    console.log(`🏠 Socket ${socket.id} joining room: ${chatId}`);
+    console.log(`🏠 Socket ${socket.id} manually joining room: ${chatId}`);
     socket.join(chatId);
+  });
+
+  // Handle when user joins a new chat (so they get added to the room)
+  socket.on('user-joined-chat', (data) => {
+    console.log(`🆕 User ${data.userId} joined new chat ${data.chatId}`);
+    socket.join(data.chatId);
+    console.log(`🏠 Added user to chat room ${data.chatId}`);
   });
 
   socket.on('send-message', async (messageData) => {
@@ -316,20 +339,41 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing-start', (data) => {
-    console.log(`⌨️ User ${data.userId} started typing in chat ${data.chatId}`);
+    console.log(`⌨️ User ${data.userName} started typing in chat ${data.chatId}`);
+    
+    // Emit to all users in the chat room (works for both ChatDetailActivity and ChatListActivity)
     socket.to(data.chatId).emit('user-typing', {
       userId: data.userId,
       userName: data.userName,
       isTyping: true
     });
+    
+    // Also emit typing-start specifically for chat list updates
+    socket.to(data.chatId).emit('typing-start', {
+      chatId: data.chatId,
+      userId: data.userId,
+      userName: data.userName
+    });
+    
+    console.log(`📡 Typing start broadcasted to chat room ${data.chatId}`);
   });
 
   socket.on('typing-stop', (data) => {
     console.log(`⌨️ User ${data.userId} stopped typing in chat ${data.chatId}`);
+    
+    // Emit to all users in the chat room (works for both ChatDetailActivity and ChatListActivity)
     socket.to(data.chatId).emit('user-typing', {
       userId: data.userId,
       isTyping: false
     });
+    
+    // Also emit typing-stop specifically for chat list updates
+    socket.to(data.chatId).emit('typing-stop', {
+      chatId: data.chatId,
+      userId: data.userId
+    });
+    
+    console.log(`📡 Typing stop broadcasted to chat room ${data.chatId}`);
   });
 
   socket.on('user-entered-chat', (data) => {

@@ -15,6 +15,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,6 +46,7 @@ import fpt.edu.vn.fchat_mobile.responses.SendMessageResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
+import fpt.edu.vn.fchat_mobile.views.TypingIndicatorView;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -52,8 +54,10 @@ import retrofit2.Response;
 public class ChatDetailActivity extends AppCompatActivity implements SocketManager.MessageStatusListener {
 
     private ImageView avatarView, btnSend, btnMic, btnCamera;
-    private TextView nameText, statusText, typingIndicator;
+    private TextView nameText, statusText;
     private EditText editMessage;
+    private TypingIndicatorView typingIndicator;
+    private LinearLayout typingIndicatorContainer;
 
     private final List<MessageItem> messageList = new ArrayList<>();
     private MessageAdapter messageAdapter;
@@ -63,7 +67,12 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
     // Typing functionality
     private Handler typingHandler = new Handler();
-    private Runnable typingRunnable;
+    private Runnable typingRunnable = new Runnable() {
+        @Override
+        public void run() {
+            stopTyping();
+        }
+    };
     private boolean isTyping = false;
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
@@ -105,8 +114,9 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         btnMic = findViewById(R.id.btn_mic);
         btnCamera = findViewById(R.id.btn_camera);
         
-        // Initialize typing indicator if it exists in layout
-        typingIndicator = findViewById(R.id.status); // Use existing status field as typing indicator
+        // Initialize typing indicator
+        typingIndicator = findViewById(R.id.typing_indicator);
+        typingIndicatorContainer = findViewById(R.id.typing_indicator_container);
 
         Intent intent = getIntent();
         chatId = intent.getStringExtra("chatId");
@@ -601,9 +611,9 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 SocketManager.emitTypingStart(chatId, currentUserId, currentUserName);
             }
             
-            // Stop typing after 3 seconds of inactivity
+            // Stop typing after 2 seconds of inactivity (reduced for better UX)
             typingHandler.removeCallbacks(typingRunnable);
-            typingHandler.postDelayed(typingRunnable, 3000);
+            typingHandler.postDelayed(typingRunnable, 2000);
         }
     }
     
@@ -662,13 +672,27 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     @Override
     public void onUserTyping(String userId, String userName, boolean isTyping) {
         Log.d(TAG, "👤 USER TYPING STATUS - " + userName + " (" + userId + ") is typing: " + isTyping);
+        
+        // Don't show typing indicator for our own typing
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (userId.equals(currentUserId)) {
+            return;
+        }
+        
         runOnUiThread(() -> {
-            if (typingIndicator != null) {
+            if (typingIndicator != null && typingIndicatorContainer != null) {
                 if (isTyping) {
-                    typingIndicator.setText(userName + " is typing...");
-                    typingIndicator.setVisibility(View.VISIBLE);
+                    typingIndicator.showTyping(userName);
+                    typingIndicatorContainer.setVisibility(View.VISIBLE);
+                    
+                    // Auto-scroll to show typing indicator
+                    RecyclerView recyclerView = findViewById(R.id.message_list);
+                    if (recyclerView != null && messageList.size() > 0) {
+                        recyclerView.smoothScrollToPosition(messageList.size() - 1);
+                    }
                 } else {
-                    typingIndicator.setVisibility(View.GONE);
+                    typingIndicator.hideTyping();
+                    typingIndicatorContainer.setVisibility(View.GONE);
                 }
             }
         });

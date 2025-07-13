@@ -48,6 +48,12 @@
             android:textSize="14sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
+        <fpt.edu.vn.fchat_mobile.views.TypingIndicatorView
+            android:id="@+id/typing_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
     </LinearLayout>
 
     <TextView
