@@ -255,7 +255,7 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         // Emit call answer
         SocketManager.emitCallAnswer(callId, callerId, currentUserId);
         
-        // Start CallActivity
+        // Start CallActivity with answered call state
         Intent callIntent = new Intent(this, CallActivity.class);
         callIntent.putExtra("chatId", chatId);
         callIntent.putExtra("participantName", callerNameStr);
@@ -263,6 +263,7 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         callIntent.putExtra("avatarUrl", avatarUrl);
         callIntent.putExtra("isVideoCall", isVideoCall);
         callIntent.putExtra("isIncomingCall", true);
+        callIntent.putExtra("isCallAnswered", true); // Add this flag to indicate call is answered
         callIntent.putExtra("callId", callId);
         startActivity(callIntent);
         
@@ -288,6 +289,7 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         callIntent.putExtra("avatarUrl", avatarUrl);
         callIntent.putExtra("isVideoCall", isVideoCall);
         callIntent.putExtra("isIncomingCall", true);
+        callIntent.putExtra("isCallAnswered", true); // Add this flag to indicate call is answered
         callIntent.putExtra("callId", callId);
         callIntent.putExtra("startMuted", true); // Start with muted microphone
         startActivity(callIntent);

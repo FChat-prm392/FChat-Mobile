@@ -81,6 +81,7 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         isVideoCall = intent.getBooleanExtra("isVideoCall", false);
         isIncomingCall = intent.getBooleanExtra("isIncomingCall", false);
         boolean startMuted = intent.getBooleanExtra("startMuted", false);
+        boolean isCallAnswered = intent.getBooleanExtra("isCallAnswered", false);
         
         // Set initial muted state if specified
         if (startMuted) {
@@ -92,7 +93,10 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         setupClickListeners();
         setupCallListeners();
         
-        if (isIncomingCall) {
+        if (isIncomingCall && isCallAnswered) {
+            // Call was already answered in IncomingCallActivity, connect immediately
+            connectCall();
+        } else if (isIncomingCall) {
             handleIncomingCall();
         } else {
             initiateCall();
