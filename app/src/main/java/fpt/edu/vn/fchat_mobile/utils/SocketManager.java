@@ -174,7 +174,7 @@ public class SocketManager {
                 data.put("senderName", senderName);
                 data.put("chatID", chatId);
                 data.put("receiverID", ""); // Server will determine receivers from chat participants
-                data.put("timestamp", new java.util.Date().toInstant().toString()); // Use ISO format
+                data.put("timestamp", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).format(new java.util.Date())); // Use ISO format timestamp
                 socket.emit("send-message", data);
                 Log.d(TAG, "📡 EMITTED real-time message - ID: " + messageId + ", Chat: " + chatId + ", Sender: " + senderName + ", Content: '" + content + "'");
             } catch (JSONException e) {
@@ -344,6 +344,32 @@ public class SocketManager {
         }
     }
 
+    // Setup listeners for chat list updates
+    public static void setupChatListListeners(ChatListListener listener) {
+        if (socket != null && listener != null) {
+            // Listen for chat list updates
+            socket.on("chat-list-update", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String chatId = data.optString("chatId", "");
+                    String lastMessage = data.optString("lastMessage", "");
+                    String senderName = data.optString("senderName", "");
+                    String timestamp = data.optString("timestamp", "");
+                    
+                    Log.d(TAG, "📋 CHAT LIST UPDATE - Chat: " + chatId + 
+                               ", Message: '" + lastMessage + "'" +
+                               ", From: " + senderName);
+                    
+                    listener.onChatListMessageUpdate(chatId, lastMessage, senderName, timestamp);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing chat-list-update", e);
+                }
+            });
+            
+            Log.d(TAG, "✅ Chat list listeners setup complete");
+        }
+    }
+
     // Interface for handling socket events
     public interface MessageStatusListener {
         void onMessageStatusChanged(String messageId, String status);
@@ -351,5 +377,10 @@ public class SocketManager {
         void onUserPresenceChanged(String userId, boolean isInChat);
         void onBulkStatusSync(int syncCount);
         void onNewMessageReceived(String messageId, String content, String senderId, String senderName, String chatId, String timestamp);
+    }
+    
+    // Interface for handling chat list updates
+    public interface ChatListListener {
+        void onChatListMessageUpdate(String chatId, String lastMessage, String senderName, String timestamp);
     }
 }

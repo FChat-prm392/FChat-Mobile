@@ -40,7 +40,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class ChatListActivity extends AppCompatActivity {
+public class ChatListActivity extends AppCompatActivity implements SocketManager.ChatListListener {
 
     private RecyclerView recyclerView;
     private ChatAdapter chatAdapter;
@@ -108,6 +108,9 @@ public class ChatListActivity extends AppCompatActivity {
             SocketManager.initializeSocket();
             socket = SocketManager.getSocket();
         }
+
+        // Setup chat list listeners for real-time updates
+        SocketManager.setupChatListListeners(this);
 
         socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
             @Override
@@ -308,8 +311,70 @@ public class ChatListActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onChatListMessageUpdate(String chatId, String lastMessage, String senderName, String timestamp) {
+        Log.d(TAG, "📋 Chat list update - Chat: " + chatId + ", Message: '" + lastMessage + "', From: " + senderName);
+
+        runOnUiThread(() -> {
+            // Find the chat item in the list and update it
+            for (int i = 0; i < chatList.size(); i++) {
+                ChatItem chatItem = chatList.get(i);
+                if (chatItem.getId().equals(chatId)) {
+                    // Format the message with sender name
+                    String formattedMessage = senderName + ": " + lastMessage;
+
+                    // Update the chat item
+                    chatItem.setMessage(formattedMessage);
+                    chatItem.setTime(formatTimestamp(timestamp));
+
+                    // Move chat to top of list for better UX
+                    chatList.remove(i);
+                    chatList.add(0, chatItem);
+
+                    // Notify adapter of changes
+                    chatAdapter.notifyDataSetChanged();
+
+                    Log.d(TAG, "✅ Updated chat list item: " + chatItem.getName());
+                    break;
+                }
+            }
+        });
+    }
+
+    private String formatTimestamp(String timestamp) {
+        try {
+            // If timestamp is in ISO format, parse and format it
+            if (timestamp != null && !timestamp.isEmpty()) {
+                java.text.SimpleDateFormat isoFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault());
+                java.util.Date date = isoFormat.parse(timestamp);
+                java.text.SimpleDateFormat timeFormat = new java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault());
+                return timeFormat.format(date);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error formatting timestamp: " + timestamp, e);
+        }
+
+        // Return current time as fallback
+        java.text.SimpleDateFormat timeFormat = new java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault());
+        return timeFormat.format(new java.util.Date());
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         // Do not disconnect socket to maintain connection
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        
+        // Refresh chat list when returning to activity
+        Log.d(TAG, "📱 ChatList resumed - refreshing data");
+        fetchChatsFromApi();
+        
+        // Re-setup socket listeners in case they were lost
+        if (socket != null && socket.connected()) {
+            SocketManager.setupChatListListeners(this);
+        }
     }
 }

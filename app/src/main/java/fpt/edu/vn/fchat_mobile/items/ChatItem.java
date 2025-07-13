@@ -31,4 +31,6 @@ public class ChatItem {
     public String getLastOnline() { return lastOnline; }
     public void setOnline(boolean isOnline) { this.isOnline = isOnline; }
     public void setLastOnline(String lastOnline) { this.lastOnline = lastOnline; }
+    public void setMessage(String message) { this.message = message; }
+    public void setTime(String time) { this.time = time; }
 }
