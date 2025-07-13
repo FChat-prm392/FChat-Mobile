@@ -20,8 +20,22 @@ public class SocketManager {
                 opts.reconnectionAttempts = Integer.MAX_VALUE;
                 opts.reconnectionDelay = 1000;
                 socket = IO.socket(SERVER_URL, opts);
+                
+                // Add connection event listeners for debugging
+                socket.on(Socket.EVENT_CONNECT, args -> {
+                    Log.d(TAG, "🔌 SOCKET CONNECTED to " + SERVER_URL);
+                });
+                
+                socket.on(Socket.EVENT_DISCONNECT, args -> {
+                    Log.d(TAG, "🔌 SOCKET DISCONNECTED");
+                });
+                
+                socket.on(Socket.EVENT_CONNECT_ERROR, args -> {
+                    Log.e(TAG, "🔌 SOCKET CONNECTION ERROR: " + (args.length > 0 ? args[0].toString() : "Unknown"));
+                });
+                
                 socket.connect();
-                Log.d(TAG, "Socket initialized and connected");
+                Log.d(TAG, "Socket initialized and connecting to " + SERVER_URL);
             } catch (Exception e) {
                 Log.e(TAG, "Error initializing socket: " + e.getMessage());
             }
@@ -74,8 +88,25 @@ public class SocketManager {
                 data.put("userId", userId);
                 data.put("timestamp", System.currentTimeMillis());
                 socket.emit("sync-message-status", data);
+                Log.d(TAG, "📥 REQUESTED GLOBAL STATUS SYNC for user: " + userId);
             } catch (JSONException e) {
                 Log.e(TAG, "Error requesting status sync", e);
+            }
+        }
+    }
+    
+    // Request status sync for a specific chat
+    public static void requestChatStatusSync(String chatId, String userId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("userId", userId);
+                data.put("chatId", chatId); // Server now uses this to filter by specific chat
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("sync-message-status", data);
+                Log.d(TAG, "📥 REQUESTED CHAT-SPECIFIC STATUS SYNC for user: " + userId + " in chat: " + chatId);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error requesting chat status sync", e);
             }
         }
     }
@@ -95,6 +126,7 @@ public class SocketManager {
                 data.put("chatId", chatId);
                 data.put("senderId", senderId);
                 socket.emit("message-sent", data);
+                Log.d(TAG, "📤 EMITTED message-sent - ID: " + messageId + ", Chat: " + chatId + ", Sender: " + senderId);
             } catch (JSONException e) {
                 Log.e(TAG, "Error emitting message-sent", e);
             }
@@ -109,6 +141,7 @@ public class SocketManager {
                 data.put("chatId", chatId);
                 data.put("userId", userId);
                 socket.emit("message-delivered", data);
+                Log.d(TAG, "📬 EMITTED message-delivered - ID: " + messageId + ", Chat: " + chatId + ", User: " + userId);
             } catch (JSONException e) {
                 Log.e(TAG, "Error emitting message-delivered", e);
             }
@@ -123,8 +156,29 @@ public class SocketManager {
                 data.put("chatId", chatId);
                 data.put("userId", userId);
                 socket.emit("message-read", data);
+                Log.d(TAG, "📖 EMITTED message-read - ID: " + messageId + ", Chat: " + chatId + ", User: " + userId);
             } catch (JSONException e) {
                 Log.e(TAG, "Error emitting message-read", e);
+            }
+        }
+    }
+    
+    // Emit real-time message for immediate delivery to other users in the chat
+    public static void emitRealtimeMessage(String messageId, String content, String senderId, String senderName, String chatId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("messageId", messageId);
+                data.put("text", content);
+                data.put("senderID", senderId);
+                data.put("senderName", senderName);
+                data.put("chatID", chatId);
+                data.put("receiverID", ""); // Server will determine receivers from chat participants
+                data.put("timestamp", new java.util.Date().toInstant().toString()); // Use ISO format
+                socket.emit("send-message", data);
+                Log.d(TAG, "📡 EMITTED real-time message - ID: " + messageId + ", Chat: " + chatId + ", Sender: " + senderName + ", Content: '" + content + "'");
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting real-time message", e);
             }
         }
     }
@@ -191,28 +245,53 @@ public class SocketManager {
     // Socket Event Listeners Setup
     public static void setupMessageStatusListeners(MessageStatusListener listener) {
         if (socket != null && listener != null) {
+            // Main status update listener
             socket.on("message-status-update", args -> {
                 try {
                     JSONObject data = (JSONObject) args[0];
                     String messageId = data.getString("messageId");
                     String status = data.getString("status");
+                    Log.d(TAG, "📥 RECEIVED message-status-update - ID: " + messageId + " → " + status);
                     listener.onMessageStatusChanged(messageId, status);
                 } catch (JSONException e) {
                     Log.e(TAG, "Error parsing message-status-update", e);
+                } catch (Exception e) {
+                    Log.e(TAG, "Unexpected error in message-status-update", e);
                 }
             });
             
-            // Listen for bulk status sync
+            // Listen for bulk status sync completion
             socket.on("status-sync-complete", args -> {
                 try {
                     JSONObject data = (JSONObject) args[0];
                     int syncCount = data.optInt("count", 0);
-                    // Refresh UI if needed
+                    String userId = data.optString("userId", "");
+                    String chatId = data.optString("chatId", "");
+                    
+                    Log.d(TAG, "📥 STATUS SYNC COMPLETE - User: " + userId + 
+                               ", Chat: " + (chatId.isEmpty() ? "ALL" : chatId) + 
+                               ", Synced: " + syncCount + " messages");
+                    
                     if (syncCount > 0) {
-                        // You might want to refresh the current chat view
+                        listener.onBulkStatusSync(syncCount);
+                        Log.d(TAG, "✅ Notified UI about " + syncCount + " status updates");
+                    } else {
+                        Log.d(TAG, "ℹ️ No status updates needed");
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing status-sync-complete", e);
+                }
+            });
+            
+            // Listen for sync errors
+            socket.on("sync-error", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String error = data.optString("error", "Unknown sync error");
+                    String userId = data.optString("userId", "");
+                    Log.e(TAG, "❌ SYNC ERROR - User: " + userId + ", Error: " + error);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing sync-error", e);
                 }
             });
 
@@ -238,6 +317,30 @@ public class SocketManager {
                     Log.e(TAG, "Error parsing user-chat-presence", e);
                 }
             });
+            
+            // Listen for incoming messages in real-time
+            socket.on("receive-message", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String messageId = data.optString("messageId", "");
+                    String content = data.optString("text", "");
+                    String senderId = data.optString("senderID", "");
+                    String senderName = data.optString("senderName", "");
+                    String chatId = data.optString("chatID", "");
+                    String timestamp = data.optString("timestamp", "");
+                    
+                    Log.d(TAG, "📥 RECEIVED real-time message - ID: " + messageId + 
+                               ", From: " + senderName + " (" + senderId + ")" +
+                               ", Chat: " + chatId + 
+                               ", Content: '" + content + "'");
+                    
+                    listener.onNewMessageReceived(messageId, content, senderId, senderName, chatId, timestamp);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing receive-message", e);
+                }
+            });
+            
+            Log.d(TAG, "✅ Socket event listeners setup complete");
         }
     }
 
@@ -246,5 +349,7 @@ public class SocketManager {
         void onMessageStatusChanged(String messageId, String status);
         void onUserTyping(String userId, String userName, boolean isTyping);
         void onUserPresenceChanged(String userId, boolean isInChat);
+        void onBulkStatusSync(int syncCount);
+        void onNewMessageReceived(String messageId, String content, String senderId, String senderName, String chatId, String timestamp);
     }
 }
