@@ -74,7 +74,6 @@ public class SocketManager {
                 data.put("userId", userId);
                 data.put("timestamp", System.currentTimeMillis());
                 socket.emit("sync-message-status", data);
-                Log.d(TAG, "📱 Requested status sync for user: " + userId);
             } catch (JSONException e) {
                 Log.e(TAG, "Error requesting status sync", e);
             }
@@ -85,32 +84,10 @@ public class SocketManager {
         return socket != null && socket.connected();
     }
 
-    // Debug method to test socket connectivity
-    public static void testSocketConnection() {
-        Log.d(TAG, "🧪 TESTING SOCKET CONNECTION");
-        Log.d(TAG, "🧪 Socket null: " + (socket == null));
-        if (socket != null) {
-            Log.d(TAG, "🧪 Socket connected: " + socket.connected());
-            Log.d(TAG, "🧪 Socket ID: " + socket.id());
-        }
-        
-        // Test emit a simple event
-        if (socket != null && socket.connected()) {
-            try {
-                JSONObject testData = new JSONObject();
-                testData.put("test", "connection");
-                testData.put("timestamp", System.currentTimeMillis());
-                socket.emit("test-connection", testData);
-                Log.d(TAG, "🧪 Emitted test-connection event");
-            } catch (JSONException e) {
-                Log.e(TAG, "🧪 Error emitting test event", e);
-            }
-        }
-    }
+
 
     // Message Status Methods
     public static void emitMessageSent(String messageId, String chatId, String senderId) {
-        Log.d(TAG, "📤 ATTEMPTING TO EMIT message-sent - MessageId: " + messageId + ", ChatId: " + chatId + ", SenderId: " + senderId);
         if (socket != null && socket.connected()) {
             try {
                 JSONObject data = new JSONObject();
@@ -118,17 +95,13 @@ public class SocketManager {
                 data.put("chatId", chatId);
                 data.put("senderId", senderId);
                 socket.emit("message-sent", data);
-                Log.d(TAG, "📤 SUCCESS: Emitted message-sent event with data: " + data.toString());
             } catch (JSONException e) {
-                Log.e(TAG, "📤 ERROR: Failed to emit message-sent", e);
+                Log.e(TAG, "Error emitting message-sent", e);
             }
-        } else {
-            Log.e(TAG, "📤 ERROR: Cannot emit message-sent - Socket null: " + (socket == null) + ", Connected: " + (socket != null && socket.connected()));
         }
     }
 
     public static void emitMessageDelivered(String messageId, String chatId, String userId) {
-        Log.d(TAG, "📬 ATTEMPTING TO EMIT message-delivered - MessageId: " + messageId + ", ChatId: " + chatId + ", UserId: " + userId);
         if (socket != null && socket.connected()) {
             try {
                 JSONObject data = new JSONObject();
@@ -136,17 +109,13 @@ public class SocketManager {
                 data.put("chatId", chatId);
                 data.put("userId", userId);
                 socket.emit("message-delivered", data);
-                Log.d(TAG, "📬 SUCCESS: Emitted message-delivered event with data: " + data.toString());
             } catch (JSONException e) {
-                Log.e(TAG, "📬 ERROR: Failed to emit message-delivered", e);
+                Log.e(TAG, "Error emitting message-delivered", e);
             }
-        } else {
-            Log.e(TAG, "📬 ERROR: Cannot emit message-delivered - Socket null: " + (socket == null) + ", Connected: " + (socket != null && socket.connected()));
         }
     }
 
     public static void emitMessageRead(String messageId, String chatId, String userId) {
-        Log.d(TAG, "📖 ATTEMPTING TO EMIT message-read - MessageId: " + messageId + ", ChatId: " + chatId + ", UserId: " + userId);
         if (socket != null && socket.connected()) {
             try {
                 JSONObject data = new JSONObject();
@@ -154,12 +123,9 @@ public class SocketManager {
                 data.put("chatId", chatId);
                 data.put("userId", userId);
                 socket.emit("message-read", data);
-                Log.d(TAG, "📖 SUCCESS: Emitted message-read event with data: " + data.toString());
             } catch (JSONException e) {
-                Log.e(TAG, "📖 ERROR: Failed to emit message-read", e);
+                Log.e(TAG, "Error emitting message-read", e);
             }
-        } else {
-            Log.e(TAG, "📖 ERROR: Cannot emit message-read - Socket null: " + (socket == null) + ", Connected: " + (socket != null && socket.connected()));
         }
     }
 
@@ -230,11 +196,9 @@ public class SocketManager {
                     JSONObject data = (JSONObject) args[0];
                     String messageId = data.getString("messageId");
                     String status = data.getString("status");
-                    Log.d(TAG, "🔄 RECEIVED STATUS UPDATE - ID: " + messageId + " → " + status);
-                    Log.d(TAG, "🔄 Full data received: " + data.toString());
                     listener.onMessageStatusChanged(messageId, status);
                 } catch (JSONException e) {
-                    Log.e(TAG, "❌ Error parsing message-status-update", e);
+                    Log.e(TAG, "Error parsing message-status-update", e);
                 }
             });
             
@@ -243,14 +207,12 @@ public class SocketManager {
                 try {
                     JSONObject data = (JSONObject) args[0];
                     int syncCount = data.optInt("count", 0);
-                    Log.d(TAG, "📱 STATUS SYNC COMPLETE - " + syncCount + " messages updated");
                     // Refresh UI if needed
                     if (syncCount > 0) {
                         // You might want to refresh the current chat view
-                        Log.d(TAG, "📱 Triggering UI refresh due to status sync");
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, "❌ Error parsing status-sync-complete", e);
+                    Log.e(TAG, "Error parsing status-sync-complete", e);
                 }
             });
 
@@ -260,7 +222,6 @@ public class SocketManager {
                     String userId = data.getString("userId");
                     boolean isTyping = data.getBoolean("isTyping");
                     String userName = data.optString("userName", "");
-                    Log.d(TAG, "User typing update: " + userId + " -> " + isTyping);
                     listener.onUserTyping(userId, userName, isTyping);
                 } catch (JSONException e) {
                     Log.e(TAG, "Error parsing user-typing", e);
@@ -272,7 +233,6 @@ public class SocketManager {
                     JSONObject data = (JSONObject) args[0];
                     String userId = data.getString("userId");
                     boolean isInChat = data.getBoolean("isInChat");
-                    Log.d(TAG, "User chat presence: " + userId + " -> " + isInChat);
                     listener.onUserPresenceChanged(userId, isInChat);
                 } catch (JSONException e) {
                     Log.e(TAG, "Error parsing user-chat-presence", e);
