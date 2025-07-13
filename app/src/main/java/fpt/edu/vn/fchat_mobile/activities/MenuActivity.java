@@ -19,7 +19,7 @@ public class MenuActivity extends AppCompatActivity {
 
     private ImageView avatarView;
     private TextView nameView;
-    private Button settingsButton, logoutButton, btnFriendList, btnAddFriend, btnToggleTheme;
+    private Button settingsButton, logoutButton, btnFriendList, btnAddFriend, btnChatList, btnToggleTheme;
 
     private SessionManager sessionManager;
     private boolean isDarkMode = false;
@@ -35,6 +35,7 @@ public class MenuActivity extends AppCompatActivity {
         logoutButton = findViewById(R.id.btn_logout);
         btnFriendList = findViewById(R.id.btn_friend_list);
         btnAddFriend = findViewById(R.id.btn_add_friend);
+        btnChatList = findViewById(R.id.btn_chat_list);
         btnToggleTheme = findViewById(R.id.btn_toggle_theme);
 
         sessionManager = new SessionManager(this);
@@ -59,8 +60,24 @@ public class MenuActivity extends AppCompatActivity {
         });
 
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, EditProfileActivity.class)));
-        btnFriendList.setOnClickListener(v -> startActivity(new Intent(this, FriendListActivity.class)));
-        btnAddFriend.setOnClickListener(v -> startActivity(new Intent(this, AddFriendActivity.class)));
+        
+        // Enhanced friend list navigation
+        btnFriendList.setOnClickListener(v -> {
+            Intent intent = new Intent(this, FriendListActivity.class);
+            startActivity(intent);
+        });
+        
+        // Enhanced add friend navigation  
+        btnAddFriend.setOnClickListener(v -> {
+            Intent intent = new Intent(this, AddFriendActivity.class);
+            startActivity(intent);
+        });
+
+        // Chat list navigation
+        btnChatList.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ChatListActivity.class);
+            startActivity(intent);
+        });
 
         btnToggleTheme.setOnClickListener(v -> {
             if (isDarkMode) {

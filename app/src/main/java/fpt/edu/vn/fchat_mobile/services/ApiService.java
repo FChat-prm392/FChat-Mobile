@@ -3,12 +3,18 @@ package fpt.edu.vn.fchat_mobile.services;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.items.ChatItem;
+import fpt.edu.vn.fchat_mobile.models.Account;
 import fpt.edu.vn.fchat_mobile.models.Friend;
+import fpt.edu.vn.fchat_mobile.models.Friendship;
 import fpt.edu.vn.fchat_mobile.models.UserStatus;
 import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
+import fpt.edu.vn.fchat_mobile.requests.SendFriendRequestRequest;
 import fpt.edu.vn.fchat_mobile.requests.SendMessageRequest;
+import fpt.edu.vn.fchat_mobile.requests.UpdateFriendRequestRequest;
+import fpt.edu.vn.fchat_mobile.responses.AccountListResponse;
+import fpt.edu.vn.fchat_mobile.responses.FriendshipResponse;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
 import fpt.edu.vn.fchat_mobile.responses.ChatResponse;
@@ -18,12 +24,14 @@ import fpt.edu.vn.fchat_mobile.responses.SendMessageResponse;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.Call;
+import retrofit2.http.PUT;
 import retrofit2.http.Part;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
@@ -66,7 +74,37 @@ public interface ApiService {
     @POST("api/messages")
     Call<SendMessageResponse> sendMessage(@Body SendMessageRequest request);
 
-    // ✅ THÊM API LẤY DANH SÁCH BẠN BÈ
+    // ✅ FRIENDSHIP ENDPOINTS (Updated to match your existing server API)
+    
+    // Send friend request
+    @POST("api/friendships")
+    Call<Void> sendFriendRequest(@Body SendFriendRequestRequest request);
+
+    // Update friend request status (accept/decline)
+    @PUT("api/friendships/{id}")
+    Call<Void> updateFriendRequest(@Path("id") String friendshipId, @Body UpdateFriendRequestRequest request);
+
+    // Get pending friend requests for a user
+    @GET("api/friendships/requests/{userId}")
+    Call<FriendshipResponse> getFriendRequests(@Path("userId") String userId);
+
+    // Get all friendships for a user  
+    @GET("api/friendships/friends/{userId}")
+    Call<FriendshipResponse> getAllFriendships(@Path("userId") String userId);
+
+    // Get friend list (just the friend users) for a user
+    @GET("api/friendships/list/{userId}")
+    Call<AccountListResponse> getFriendList(@Path("userId") String userId);
+
+    // Delete friendship
+    @DELETE("api/friendships/{id}")
+    Call<Void> deleteFriendship(@Path("id") String friendshipId);
+
+    // Search users (for adding friends) - using dedicated search endpoint
+    @GET("api/accounts/search")
+    Call<AccountListResponse> searchUsers(@Query("q") String query);
+
+    // ✅ EXISTING ENDPOINTS (keeping for backward compatibility)
     @GET("api/friends/{userId}")
     Call<List<Friend>> getFriends(@Path("userId") String userId);
 

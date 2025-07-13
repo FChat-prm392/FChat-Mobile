@@ -8,4 +8,9 @@
     <color name="gray">#FF9E9E9E</color>
     <color name="gray_light">#FFBDBDBD</color>
     <color name="transparent">#00000000</color>
+    
+    <!-- Primary colors for Material Design -->
+    <color name="colorPrimary">#FF2196F3</color>
+    <color name="colorPrimaryDark">#FF1976D2</color>
+    <color name="colorAccent">#FF4CAF50</color>
 </resources>

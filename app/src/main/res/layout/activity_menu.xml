@@ -71,8 +71,10 @@
                 android:layout_marginTop="1dp"
                 android:backgroundTint="#EEEEEE"
                 android:gravity="center|start"
-                android:text="Danh sách bạn bè"
-                android:textColor="#000000" />
+                android:text="Bạn bè"
+                android:textColor="#000000"
+                android:drawableStart="@drawable/ic_people"
+                android:drawablePadding="12dp" />
 
             <Button
                 android:id="@+id/btn_add_friend"
@@ -81,8 +83,22 @@
                 android:layout_marginTop="1dp"
                 android:backgroundTint="#EEEEEE"
                 android:gravity="center|start"
-                android:text="Thêm bạn bè"
-                android:textColor="#000000" />
+                android:text="Tìm bạn bè"
+                android:textColor="#000000"
+                android:drawableStart="@drawable/ic_person_add"
+                android:drawablePadding="12dp" />
+
+            <Button
+                android:id="@+id/btn_chat_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="Tin nhắn"
+                android:textColor="#000000"
+                android:drawableStart="@drawable/ic_chat"
+                android:drawablePadding="12dp" />
 
             <Button
                 android:id="@+id/btn_logout"
