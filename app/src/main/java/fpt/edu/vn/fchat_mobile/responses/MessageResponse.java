@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName;
 
 public class MessageResponse {
 
-    @SerializedName("_id")
+    @SerializedName("id")
     private String id;
 
     @SerializedName("senderID")
@@ -47,7 +47,7 @@ public class MessageResponse {
     }
 
     public static class Sender {
-        @SerializedName("_id")
+        @SerializedName("id")
         private String id;
 
         @SerializedName("fullname")

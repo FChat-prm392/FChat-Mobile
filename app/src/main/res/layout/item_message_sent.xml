@@ -2,23 +2,59 @@
     android:gravity="end"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="6dp">
+    android:padding="6dp"
+    android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/sent_text"
-        android:background="@drawable/bg_message_sent"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:padding="10dp"
+    <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="end">
 
-    <ImageView
-        android:id="@+id/message_image"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:scaleType="centerCrop"
-        android:visibility="gone"
-        android:layout_marginTop="4dp"
-        android:layout_gravity="end|start" />
+        <TextView
+            android:id="@+id/sent_text"
+            android:background="@drawable/bg_message_sent"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:padding="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <ImageView
+            android:id="@+id/message_image"
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:layout_marginTop="4dp" />
+
+        <!-- Status and timestamp container -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="end"
+            android:layout_marginTop="2dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/message_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textColor="#999999"
+                android:layout_marginEnd="4dp"
+                android:text="12:30 PM" />
+
+            <ImageView
+                android:id="@+id/message_status_icon"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_check"
+                android:tint="#999999" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
 </LinearLayout>

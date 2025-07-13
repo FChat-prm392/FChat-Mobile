@@ -3,7 +3,7 @@ package fpt.edu.vn.fchat_mobile.responses;
 import com.google.gson.annotations.SerializedName;
 
 public class SendMessageResponse {
-    @SerializedName("_id")
+    @SerializedName("id")
     private String id;
 
     @SerializedName("senderID")
@@ -43,5 +43,17 @@ public class SendMessageResponse {
 
     public String getCreateAt() {
         return createAt;
+    }
+
+    @Override
+    public String toString() {
+        return "SendMessageResponse{" +
+                "id='" + id + '\'' +
+                ", senderID='" + senderID + '\'' +
+                ", chatID='" + chatID + '\'' +
+                ", text='" + text + '\'' +
+                ", messageStatus='" + messageStatus + '\'' +
+                ", createAt='" + createAt + '\'' +
+                '}';
     }
 }
