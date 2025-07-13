@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/bg_reaction_item"
+    android:padding="6dp"
+    android:layout_margin="2dp"
+    android:gravity="center_vertical"
+    android:clickable="true"
+    android:focusable="true"
+    android:minWidth="40dp"
+    android:minHeight="32dp">
+
+    <TextView
+        android:id="@+id/reaction_emoji"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textStyle="normal"
+        android:layout_marginEnd="3dp"
+        android:includeFontPadding="false"
+        android:fontFamily="sans-serif"
+        android:textColorHint="#000000"
+        android:text="👍" />
+
+    <TextView
+        android:id="@+id/reaction_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#666666"
+        android:text="1" />
+
+</LinearLayout>

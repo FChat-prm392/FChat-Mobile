@@ -9,10 +9,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.flexbox.FlexboxLayout;
+
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.items.MessageItem;
+import fpt.edu.vn.fchat_mobile.utils.ReactionManager;
 
 public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -20,9 +23,19 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     private static final int TYPE_RECEIVED = 2;
 
     private final List<MessageItem> messages;
+    private String currentUserId;
+    private ReactionManager.ReactionCallback reactionCallback;
 
     public MessageAdapter(List<MessageItem> messages) {
         this.messages = messages;
+    }
+    
+    public void setCurrentUserId(String currentUserId) {
+        this.currentUserId = currentUserId;
+    }
+    
+    public void setReactionCallback(ReactionManager.ReactionCallback callback) {
+        this.reactionCallback = callback;
     }
 
     @Override
@@ -49,6 +62,15 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
 
         if (holder instanceof SentViewHolder) {
             SentViewHolder viewHolder = (SentViewHolder) holder;
+            
+            // Set up long press for reactions
+            viewHolder.itemView.setOnLongClickListener(v -> {
+                if (reactionCallback != null && message.getMessageId() != null) {
+                    ReactionManager.showReactionPicker(v.getContext(), v, message.getMessageId(), reactionCallback);
+                }
+                return true;
+            });
+            
             if (message.isImage()) {
                 viewHolder.text.setVisibility(View.GONE);
                 viewHolder.image.setVisibility(View.VISIBLE);
@@ -65,8 +87,20 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             // Set status icon based on message status
             updateStatusIcon(viewHolder.statusIcon, message.getStatus());
             
+            // Display reactions
+            ReactionManager.displayReactions(viewHolder.reactionsContainer, message, currentUserId, reactionCallback);
+            
         } else if (holder instanceof ReceivedViewHolder) {
             ReceivedViewHolder viewHolder = (ReceivedViewHolder) holder;
+            
+            // Set up long press for reactions
+            viewHolder.itemView.setOnLongClickListener(v -> {
+                if (reactionCallback != null && message.getMessageId() != null) {
+                    ReactionManager.showReactionPicker(v.getContext(), v, message.getMessageId(), reactionCallback);
+                }
+                return true;
+            });
+            
             if (message.isImage()) {
                 viewHolder.text.setVisibility(View.GONE);
                 viewHolder.image.setVisibility(View.VISIBLE);
@@ -79,6 +113,9 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             
             // Set timestamp for received messages
             viewHolder.timeText.setText(message.getTimestamp());
+            
+            // Display reactions
+            ReactionManager.displayReactions(viewHolder.reactionsContainer, message, currentUserId, reactionCallback);
         }
     }
     
@@ -133,6 +170,7 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         ImageView image;
         TextView timeText;
         ImageView statusIcon;
+        FlexboxLayout reactionsContainer;
 
         SentViewHolder(View itemView) {
             super(itemView);
@@ -140,6 +178,7 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             image = itemView.findViewById(R.id.message_image);
             timeText = itemView.findViewById(R.id.message_time);
             statusIcon = itemView.findViewById(R.id.message_status_icon);
+            reactionsContainer = itemView.findViewById(R.id.reactions_container);
         }
     }
 
@@ -147,12 +186,14 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         TextView text;
         ImageView image;
         TextView timeText;
+        FlexboxLayout reactionsContainer;
 
         ReceivedViewHolder(View itemView) {
             super(itemView);
             text = itemView.findViewById(R.id.received_text);
             image = itemView.findViewById(R.id.message_image);
             timeText = itemView.findViewById(R.id.message_time);
+            reactionsContainer = itemView.findViewById(R.id.reactions_container);
         }
     }
 }

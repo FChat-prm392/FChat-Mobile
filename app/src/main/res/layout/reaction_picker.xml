@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/bg_reaction_picker"
+    android:padding="8dp"
+    android:elevation="8dp">
+
+    <TextView
+        android:id="@+id/emoji_like"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="👍"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:id="@+id/emoji_love"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="❤️"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:id="@+id/emoji_laugh"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="😂"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:id="@+id/emoji_wow"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="😮"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:id="@+id/emoji_sad"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="😢"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:id="@+id/emoji_angry"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="😡"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true" />
+
+</LinearLayout>

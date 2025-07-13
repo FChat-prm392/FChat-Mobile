@@ -35,15 +35,20 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.adapters.MessageAdapter;
 import fpt.edu.vn.fchat_mobile.items.MessageItem;
+import fpt.edu.vn.fchat_mobile.models.MessageReaction;
+import fpt.edu.vn.fchat_mobile.models.ReactionSummary;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
+import fpt.edu.vn.fchat_mobile.repositories.ReactionRepository;
 import fpt.edu.vn.fchat_mobile.requests.SendMessageRequest;
 import fpt.edu.vn.fchat_mobile.responses.MessageResponse;
 import fpt.edu.vn.fchat_mobile.responses.SendMessageResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
+import fpt.edu.vn.fchat_mobile.utils.ReactionManager;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
 import fpt.edu.vn.fchat_mobile.views.TypingIndicatorView;
@@ -61,6 +66,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
     private final List<MessageItem> messageList = new ArrayList<>();
     private MessageAdapter messageAdapter;
+    private ReactionRepository reactionRepository;
     private String chatId;
     private String participantId; // Store the other participant's ID
     private SessionManager sessionManager;
@@ -77,6 +83,19 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     private boolean isTyping = false;
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
+    
+    // Reaction callback implementation
+    private final ReactionManager.ReactionCallback reactionCallback = new ReactionManager.ReactionCallback() {
+        @Override
+        public void onReactionSelected(String messageId, String emoji, boolean isAdding) {
+            handleReactionSelection(messageId, emoji, isAdding);
+        }
+
+        @Override
+        public void onReactionClicked(String messageId, String emoji, List<String> userNames) {
+            ReactionManager.showReactionUsers(ChatDetailActivity.this, emoji, userNames);
+        }
+    };
 
     private final ActivityResultLauncher<Intent> cameraLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -94,6 +113,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         setContentView(R.layout.activity_chat_detail);
 
         sessionManager = new SessionManager(this);
+        reactionRepository = new ReactionRepository();
         
         // Check if user is logged in
         if (!sessionManager.hasValidSession()) {
@@ -105,7 +125,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         // Debug session info
         String currentUserId = sessionManager.getCurrentUserId();
         String currentUserName = sessionManager.getCurrentUserUsername();
-        Log.d(TAG, "Session info - User ID: '" + currentUserId + "', Username: '" + currentUserName + "'");
 
         avatarView = findViewById(R.id.avatar);
         nameText = findViewById(R.id.name);
@@ -146,7 +165,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         // Join the chat room for real-time updates
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
-            Log.d(TAG, "🏠 Joined chat room: " + chatId);
         }
         
         // Register user for online status
@@ -166,6 +184,8 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         RecyclerView recyclerView = findViewById(R.id.message_list);
         messageAdapter = new MessageAdapter(messageList);
+        messageAdapter.setCurrentUserId(sessionManager.getCurrentUserId());
+        messageAdapter.setReactionCallback(reactionCallback);
         recyclerView.setAdapter(messageAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -173,41 +193,27 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         btnSend.setOnClickListener(v -> {
             String content = editMessage.getText().toString().trim();
-            Log.d(TAG, "📤 SEND BUTTON CLICKED - Message: '" + content + "'");
             if (!content.isEmpty()) {
                 sendMessage(content);
                 editMessage.setText("");
                 
-                // Stop typing when message is sent
                 if (isTyping) {
                     stopTyping();
                 }
-            } else {
-                Log.w(TAG, "Attempted to send empty message");
             }
         });
         
         btnSend.setOnClickListener(v -> {
             String content = editMessage.getText().toString().trim();
-            Log.d(TAG, "📤 SEND BUTTON CLICKED - Message: '" + content + "'");
             
             if (!content.isEmpty()) {
                 sendMessage(content);
                 editMessage.setText("");
                 
-                // Stop typing when message is sent
                 if (isTyping) {
                     stopTyping();
                 }
-            } else {
-                Log.w(TAG, "Attempted to send empty message");
             }
-        });
-        
-        // DEBUG: Long press send button to test status update
-        btnSend.setOnLongClickListener(v -> {
-            testStatusUpdate();
-            return true;
         });
         
         // Add typing indicator for text input
@@ -264,123 +270,32 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     protected void onResume() {
         super.onResume();
         
-        // Debug socket connection
-        Log.d(TAG, "🔌 SOCKET CONNECTION STATUS: " + (SocketManager.getSocket() != null && SocketManager.getSocket().connected()));
-        
-        // Reconnect to chat room if needed
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
             
-            // Request status sync in case we missed any updates while away
             String currentUserId = sessionManager.getCurrentUserId();
             if (currentUserId != null) {
-                Log.d(TAG, "🔄 REQUESTING STATUS SYNC - User: " + currentUserId + ", Chat: " + chatId);
-                Log.d(TAG, "🔄 Current message list has " + messageList.size() + " messages");
-                
-                // Debug: show message IDs that we want to sync
-                for (int i = 0; i < Math.min(3, messageList.size()); i++) {
-                    MessageItem msg = messageList.get(i);
-                    Log.d(TAG, "🔄 Message " + i + " - ID: " + msg.getMessageId() + 
-                               ", IsMine: " + msg.isSentByUser() + 
-                               ", Status: " + msg.getStatus());
-                }
-                
                 SocketManager.requestChatStatusSync(chatId, currentUserId);
-                Log.d(TAG, "🔄 REQUESTED STATUS SYNC ON RESUME");
             }
         }
         
-        // Mark all unread messages as read when user enters/returns to the chat
         markAllMessagesAsRead();
-    }
-    
-    /**
-     * DEBUG: Test status update functionality
-     */
-    private void testStatusUpdate() {
-        Log.d(TAG, "🧪 TESTING STATUS UPDATE");
-        
-        // Test 1: Show current messages
-        Log.d(TAG, "🧪 Current messages count: " + messageList.size());
-        int userMessages = 0;
-        int otherMessages = 0;
-        
-        for (int i = 0; i < messageList.size(); i++) {
-            MessageItem msg = messageList.get(i);
-            Log.d(TAG, String.format("🧪 Message %d: ID=%s, isSentByUser=%s, status=%s, content='%s'", 
-                i, msg.getMessageId(), msg.isSentByUser(), msg.getStatus(), 
-                msg.getContent() != null ? msg.getContent().substring(0, Math.min(20, msg.getContent().length())) : "null"));
-            
-            if (msg.isSentByUser()) {
-                userMessages++;
-            } else {
-                otherMessages++;
-            }
-        }
-        
-        Log.d(TAG, String.format("🧪 Message breakdown: %d user messages, %d other messages", userMessages, otherMessages));
-        
-        // Test 2: Try to find any message to update (even user messages for testing)
-        MessageItem testMessage = null;
-        for (MessageItem msg : messageList) {
-            if (msg.getMessageId() != null && !"read".equals(msg.getStatus())) {
-                testMessage = msg;
-                break;
-            }
-        }
-        
-        if (testMessage != null) {
-            Log.d(TAG, "🧪 Found test message: " + testMessage.getMessageId() + " with status: " + testMessage.getStatus());
-            String oldStatus = testMessage.getStatus();
-            testMessage.setStatus("read");
-            runOnUiThread(() -> {
-                messageAdapter.notifyDataSetChanged();
-                Toast.makeText(this, "Test: Updated " + oldStatus + " → read", Toast.LENGTH_SHORT).show();
-            });
-        } else {
-            Log.d(TAG, "🧪 No messages with messageId found or all already read");
-            Toast.makeText(this, "All messages are read or missing IDs", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void markAllMessagesAsRead() {
         if (chatId != null && messageList != null && !messageList.isEmpty()) {
             String currentUserId = sessionManager.getCurrentUserId();
-            Log.d(TAG, "👁️ MARKING MESSAGES AS READ - Chat: " + chatId + ", User: " + currentUserId);
-            Log.d(TAG, "📋 TOTAL MESSAGES IN LIST: " + messageList.size());
             
-            int markedCount = 0;
-            for (int i = 0; i < messageList.size(); i++) {
-                MessageItem message = messageList.get(i);
-                Log.d(TAG, "🔍 Message " + i + " - ID: " + message.getMessageId() + 
-                           ", IsMine: " + message.isSentByUser() + 
-                           ", Status: " + message.getStatus() + 
-                           ", Content: '" + message.getContent() + "'");
-                
-                // Only mark messages that are not mine and not already read
+            for (MessageItem message : messageList) {
                 if (!message.isSentByUser() && message.getMessageId() != null && !"read".equals(message.getStatus())) {
                     SocketManager.emitMessageRead(message.getMessageId(), chatId, currentUserId);
-                    message.setStatus("read"); // Update local status
-                    markedCount++;
-                    Log.d(TAG, "📖 MARKED AS READ - ID: " + message.getMessageId());
-                } else {
-                    String reason = "";
-                    if (message.isSentByUser()) reason = "is my own message";
-                    else if (message.getMessageId() == null) reason = "no messageId";
-                    else if ("read".equals(message.getStatus())) reason = "already read";
-                    Log.d(TAG, "⏭️ SKIPPED - " + reason);
+                    message.setStatus("read");
                 }
             }
             
-            Log.d(TAG, "✅ MARKED " + markedCount + " MESSAGES AS READ");
-            
-            // Update UI
-            if (markedCount > 0 && messageAdapter != null) {
+            if (messageAdapter != null) {
                 messageAdapter.notifyDataSetChanged();
             }
-        } else {
-            Log.w(TAG, "❌ CANNOT MARK AS READ - chatId: " + chatId + ", messageList: " + 
-                       (messageList == null ? "null" : "size=" + messageList.size()));
         }
     }
 
@@ -447,6 +362,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         String formattedTime = formatMessageTime(msg.getCreateAt());
                         MessageItem messageItem = new MessageItem(msg.getText(), isMine, msg.getId(), formattedTime);
                         messageList.add(messageItem);
+                        
+                        // Load reactions for each message
+                        if (msg.getId() != null) {
+                            loadMessageReactions(msg.getId());
+                        }
                         
                         // Emit message delivered for messages that are not mine
                         if (!isMine && msg.getId() != null) {
@@ -933,6 +853,171 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             @Override
             public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
                 // Handle video status
+            }
+        });
+    }
+    
+    // 🎭 REACTION HANDLING METHODS
+    private void handleReactionSelection(String messageId, String emoji, boolean isAdding) {
+        try {
+            String currentUserId = sessionManager.getCurrentUserId();
+            
+            if (currentUserId == null || messageId == null || emoji == null) {
+                runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                    "Error: Cannot process reaction", Toast.LENGTH_SHORT).show());
+                return;
+            }
+            
+            boolean userAlreadyReacted = checkIfUserAlreadyReacted(messageId, currentUserId, emoji);
+            
+            if (userAlreadyReacted) {
+                removeReaction(messageId, currentUserId, emoji);
+            } else {
+                addReaction(messageId, currentUserId, emoji);
+            }
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                "Error processing reaction", Toast.LENGTH_SHORT).show());
+        }
+    }
+    
+    private boolean checkIfUserAlreadyReacted(String messageId, String userId, String emoji) {
+        try {
+            if (messageId == null || userId == null || emoji == null) {
+                return false;
+            }
+            
+            for (MessageItem message : messageList) {
+                if (messageId.equals(message.getMessageId())) {
+                    Map<String, ReactionSummary> summaries = message.getReactionSummaries();
+                    if (summaries != null) {
+                        ReactionSummary summary = summaries.get(emoji);
+                        return summary != null && summary.isCurrentUserReacted();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore errors
+        }
+        return false;
+    }
+    
+    private void addReaction(String messageId, String userId, String emoji) {
+        try {
+            if (messageId == null || userId == null || emoji == null) {
+                runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                    "Error: Missing reaction data", Toast.LENGTH_SHORT).show());
+                return;
+            }
+            
+            reactionRepository.addReaction(messageId, userId, emoji, new ReactionRepository.ReactionCallback() {
+                @Override
+                public void onSuccess(MessageReaction reaction) {
+                    if (reaction != null) {
+                        if (reaction.getUserName() == null || reaction.getUserName().isEmpty()) {
+                            String currentUserName = sessionManager.getCurrentUserUsername();
+                            reaction.setUserName(currentUserName);
+                        }
+                    }
+                    
+                    updateMessageReactionLocally(messageId, reaction, true);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    if (error != null && error.getMessage() != null && error.getMessage().contains("REACTION_EXISTS")) {
+                        removeReaction(messageId, userId, emoji);
+                    } else {
+                        runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                            "Failed to add reaction: " + (error != null ? error.getMessage() : "Unknown error"), 
+                            Toast.LENGTH_SHORT).show());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                "Error adding reaction", Toast.LENGTH_SHORT).show());
+        }
+    }
+    
+    private void removeReaction(String messageId, String userId, String emoji) {
+        try {
+            if (messageId == null || userId == null || emoji == null) {
+                runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                    "Error: Missing reaction data", Toast.LENGTH_SHORT).show());
+                return;
+            }
+            
+            reactionRepository.removeReaction(messageId, userId, emoji, new ReactionRepository.VoidCallback() {
+                @Override
+                public void onSuccess() {
+                    updateMessageReactionLocally(messageId, null, false, userId, emoji);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                        "Failed to remove reaction: " + (error != null ? error.getMessage() : "Unknown error"), 
+                        Toast.LENGTH_SHORT).show());
+                }
+            });
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(ChatDetailActivity.this, 
+                "Error removing reaction", Toast.LENGTH_SHORT).show());
+        }
+    }
+    
+    private void updateMessageReactionLocally(String messageId, MessageReaction reaction, boolean isAdding) {
+        updateMessageReactionLocally(messageId, reaction, isAdding, null, null);
+    }
+    
+    private void updateMessageReactionLocally(String messageId, MessageReaction reaction, boolean isAdding, String userId, String emoji) {
+        try {
+            String currentUserId = sessionManager.getCurrentUserId();
+            if (currentUserId == null) {
+                return;
+            }
+            
+            runOnUiThread(() -> {
+                try {
+                    for (int i = 0; i < messageList.size(); i++) {
+                        MessageItem message = messageList.get(i);
+                        if (messageId != null && messageId.equals(message.getMessageId())) {
+                            if (isAdding && reaction != null) {
+                                message.addReaction(reaction, currentUserId);
+                            } else if (!isAdding && userId != null && emoji != null) {
+                                message.removeReaction(userId, emoji, currentUserId);
+                            }
+                            messageAdapter.notifyItemChanged(i);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    // Ignore UI update errors
+                }
+            });
+        } catch (Exception e) {
+            // Ignore errors
+        }
+    }
+    
+    private void loadMessageReactions(String messageId) {
+        reactionRepository.getMessageReactions(messageId, new ReactionRepository.ReactionsListCallback() {
+            @Override
+            public void onSuccess(List<MessageReaction> reactions) {
+                String currentUserId = sessionManager.getCurrentUserId();
+                for (MessageItem message : messageList) {
+                    if (messageId.equals(message.getMessageId())) {
+                        message.setReactions(reactions, currentUserId);
+                        runOnUiThread(() -> messageAdapter.notifyDataSetChanged());
+                        break;
+                    }
+                }
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                // Ignore error - reactions just won't load
             }
         });
     }

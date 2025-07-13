@@ -6,6 +6,7 @@ import fpt.edu.vn.fchat_mobile.items.ChatItem;
 import fpt.edu.vn.fchat_mobile.models.Account;
 import fpt.edu.vn.fchat_mobile.models.Friend;
 import fpt.edu.vn.fchat_mobile.models.Friendship;
+import fpt.edu.vn.fchat_mobile.models.MessageReaction;
 import fpt.edu.vn.fchat_mobile.models.UserStatus;
 import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
@@ -113,5 +114,23 @@ public interface ApiService {
             @Query("requesterId") String requesterId,
             @Query("recipientId") String recipientId
     );
+
+    // 🎭 MESSAGE REACTIONS ENDPOINTS
+    @POST("api/messages/{messageId}/reactions")
+    Call<MessageReaction> addReaction(
+            @Path("messageId") String messageId,
+            @Query("userId") String userId,
+            @Query("emoji") String emoji
+    );
+
+    @DELETE("api/messages/{messageId}/reactions")
+    Call<Void> removeReaction(
+            @Path("messageId") String messageId,
+            @Query("userId") String userId,
+            @Query("emoji") String emoji
+    );
+
+    @GET("api/messages/{messageId}/reactions")
+    Call<List<MessageReaction>> getMessageReactions(@Path("messageId") String messageId);
 
 }
