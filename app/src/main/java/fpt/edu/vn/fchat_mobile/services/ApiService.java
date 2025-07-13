@@ -3,6 +3,7 @@ package fpt.edu.vn.fchat_mobile.services;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.items.ChatItem;
+import fpt.edu.vn.fchat_mobile.models.Friend;
 import fpt.edu.vn.fchat_mobile.models.UserStatus;
 import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
@@ -28,6 +29,7 @@ import retrofit2.http.Path;
 import retrofit2.http.Query;
 
 public interface ApiService {
+
     @POST("api/accounts/login")
     Call<LoginResponse> login(@Body LoginRequest request);
 
@@ -47,26 +49,31 @@ public interface ApiService {
 
     @FormUrlEncoded
     @POST("api/forgot-password")
-    Call<LoginResponse> resetPassword(
-            @Field("email") String email
-    );
+    Call<LoginResponse> resetPassword(@Field("email") String email);
 
     @POST("api/auth/google-login")
     Call<LoginResponse> googleLogin(@Body GoogleLoginRequest request);
 
     @GET("api/messages/{chatId}")
-    Call<List<MessageResponse>> getMessagesByChatId(
-            @Path("chatId") String chatId,
-            @Query("limit") int limit
-    );
+    Call<List<MessageResponse>> getMessagesByChatId(@Path("chatId") String chatId, @Query("limit") int limit);
 
     @GET("api/accounts/status/{userId}")
     Call<UserStatus> getUserStatus(@Path("userId") String userId);
-
 
     @GET("api/chats/user/{userId}")
     Call<List<ChatResponse>> getChats(@Path("userId") String userId);
 
     @POST("api/messages")
     Call<SendMessageResponse> sendMessage(@Body SendMessageRequest request);
+
+    // ✅ THÊM API LẤY DANH SÁCH BẠN BÈ
+    @GET("api/friends/{userId}")
+    Call<List<Friend>> getFriends(@Path("userId") String userId);
+
+    @POST("api/friend-requests")
+    Call<Void> sendFriendRequest(
+            @Query("requesterId") String requesterId,
+            @Query("recipientId") String recipientId
+    );
+
 }
