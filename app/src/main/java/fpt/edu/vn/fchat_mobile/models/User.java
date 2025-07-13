@@ -7,6 +7,7 @@ public class User {
     private String email;
     private String gender;
     private String phoneNumber;
+    private String imageURL;
     private boolean status;
     private String createdAt;
     private String updatedAt;
@@ -17,6 +18,7 @@ public class User {
     public String getEmail() { return email; }
     public String getGender() { return gender; }
     public String getPhoneNumber() { return phoneNumber; }
+    public String getimageURL() { return imageURL; }
     public boolean isStatus() { return status; }
     public String getCreatedAt() { return createdAt; }
     public String getUpdatedAt() { return updatedAt; }

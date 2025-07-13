@@ -12,6 +12,7 @@ public class SessionManager {
     private static final String KEY_USERNAME = "username";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_GENDER = "gender";
+    private static final String KEY_AVATAR_URL = "avatar_url";
     private static final String KEY_PHONE_NUMBER = "phone_number";
     private static final String KEY_IS_LOGGED_IN = "is_logged_in";
 
@@ -34,6 +35,7 @@ public class SessionManager {
         editor.putString(KEY_USERNAME, user.getUsername());
         editor.putString(KEY_EMAIL, user.getEmail());
         editor.putString(KEY_GENDER, user.getGender());
+        editor.putString(KEY_AVATAR_URL, user.getimageURL());
         editor.putString(KEY_PHONE_NUMBER, user.getPhoneNumber());
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.apply();
@@ -72,6 +74,10 @@ public class SessionManager {
      */
     public boolean isLoggedIn() {
         return sharedPreferences.getBoolean(KEY_IS_LOGGED_IN, false);
+    }
+
+    public String getCurrentUserAvatarUrl() {
+        return sharedPreferences.getString(KEY_AVATAR_URL, "N/A"); // ✅ added
     }
 
     /**

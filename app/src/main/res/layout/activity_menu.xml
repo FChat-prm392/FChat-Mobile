@@ -40,7 +40,6 @@
             android:backgroundTint="#EEEEEE"
             android:layout_marginTop="12dp" />
 
-        <!-- Các mục menu -->
         <LinearLayout
             android:layout_marginTop="24dp"
             android:orientation="vertical"
@@ -48,39 +47,51 @@
             android:layout_height="wrap_content">
 
             <TextView
-                android:text="Trạng thái hoạt động: Đang bật"
+                android:text="Trạng thái hoạt động: Online"
                 android:textColor="#000000"
                 android:padding="12dp"
                 android:background="#F5F5F5"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
-            <TextView
-                android:text="Chế độ tối: Hệ thống"
-                android:textColor="#000000"
-                android:padding="12dp"
+            <Button
+                android:id="@+id/btn_toggle_theme"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="1dp"
-                android:background="#F5F5F5"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="Chế độ hệ thống: Hệ thống"
+                android:textColor="#000000" />
 
-            <TextView
-                android:text="Thông báo và âm thanh: Bật"
-                android:textColor="#000000"
-                android:padding="12dp"
+            <Button
+                android:id="@+id/btn_friend_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="1dp"
-                android:background="#F5F5F5"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="Danh sách bạn bè"
+                android:textColor="#000000" />
 
-                <Button
-    android:id="@+id/btn_logout"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="Đăng xuất"
-    android:textColor="#FFFFFF"
-    android:backgroundTint="#FF4444"
-    android:layout_marginTop="8dp" />
+            <Button
+                android:id="@+id/btn_add_friend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="Thêm bạn bè"
+                android:textColor="#000000" />
+
+            <Button
+                android:id="@+id/btn_logout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Đăng xuất"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#FF4444"
+                android:layout_marginTop="12dp" />
 
         </LinearLayout>
     </LinearLayout>
