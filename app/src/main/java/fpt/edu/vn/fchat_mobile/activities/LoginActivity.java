@@ -3,6 +3,7 @@ package fpt.edu.vn.fchat_mobile.activities;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,9 +15,11 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
+import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
+import fpt.edu.vn.fchat_mobile.utils.FirebaseAuthManager;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
 import io.socket.client.Socket;
@@ -25,16 +28,19 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class LoginActivity extends AppCompatActivity {
+import com.google.firebase.auth.FirebaseUser;
+
+public class LoginActivity extends AppCompatActivity implements FirebaseAuthManager.AuthListener {
 
     private TextInputLayout emailLayout, passwordLayout;
     private TextInputEditText emailInput, passwordInput;
-    private MaterialButton loginButton;
+    private MaterialButton loginButton, googleSignInButton;
     private TextView forgetPasswordText, registerText;
 
     private ApiService apiService;
     private SessionManager sessionManager;
     private Socket socket;
+    private FirebaseAuthManager firebaseAuthManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +50,7 @@ public class LoginActivity extends AppCompatActivity {
         initViews();
         setupSocket();
         setupListeners();
+        setupFirebaseAuth();
     }
 
     private void initViews() {
@@ -52,6 +59,7 @@ public class LoginActivity extends AppCompatActivity {
         emailInput = findViewById(R.id.emailInput);
         passwordInput = findViewById(R.id.passwordInput);
         loginButton = findViewById(R.id.loginButton);
+        googleSignInButton = findViewById(R.id.googleSignInButton);
         forgetPasswordText = findViewById(R.id.forgetPasswordText);
         registerText = findViewById(R.id.registerText);
         apiService = ApiClient.getService();
@@ -123,6 +131,14 @@ public class LoginActivity extends AppCompatActivity {
                 startActivity(new Intent(this, RegisterActivity.class)));
     }
 
+    private void setupFirebaseAuth() {
+        firebaseAuthManager = new FirebaseAuthManager(this, this);
+        
+        googleSignInButton.setOnClickListener(v -> {
+            firebaseAuthManager.signInWithGoogle();
+        });
+    }
+
     private void login(String email, String password) {
         LoginRequest request = new LoginRequest(email, password);
         apiService.login(request).enqueue(new Callback<LoginResponse>() {
@@ -148,6 +164,55 @@ public class LoginActivity extends AppCompatActivity {
                 Toast.makeText(LoginActivity.this, "Login failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void googleLogin(String idToken) {
+        GoogleLoginRequest request = new GoogleLoginRequest(idToken);
+        apiService.googleLogin(request).enqueue(new Callback<LoginResponse>() {
+            @Override
+            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().getUser() != null) {
+                    // Save user session
+                    sessionManager.saveUserSession(response.body().getUser());
+
+                    String userId = response.body().getUser().getId();
+                    socket.emit("register-user", userId);
+
+                    String name = response.body().getUser().getFullname();
+                    Toast.makeText(LoginActivity.this, "Welcome " + name, Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(LoginActivity.this, ChatListActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(LoginActivity.this, "Google authentication failed", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<LoginResponse> call, Throwable t) {
+                Toast.makeText(LoginActivity.this, "Google login failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // Firebase Auth Callbacks
+    @Override
+    public void onAuthSuccess(String idToken, FirebaseUser user) {
+        Toast.makeText(this, "Firebase Authentication successful", Toast.LENGTH_SHORT).show();
+        Log.d("LoginActivity", "Firebase user: " + user.getEmail());
+        googleLogin(idToken);
+    }
+
+    @Override
+    public void onAuthFailure(String error) {
+        Toast.makeText(this, "Authentication failed: " + error, Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FirebaseAuthManager.getSignInRequestCode()) {
+            firebaseAuthManager.handleSignInResult(requestCode, data);
+        }
     }
 
     @Override

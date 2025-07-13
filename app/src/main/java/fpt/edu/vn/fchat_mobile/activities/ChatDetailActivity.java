@@ -119,12 +119,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             SocketManager.emitUserEnteredChat(chatId, currentUserId);
             Log.d(TAG, "🚪 USER ENTERED CHAT: " + chatId);
         }
-        
-        // DEBUG: Test socket connection after setup
-        new android.os.Handler().postDelayed(() -> {
-            Log.d(TAG, "🧪 INITIAL SOCKET CONNECTION TEST");
-            SocketManager.testSocketConnection();
-        }, 2000);
 
         avatarView = findViewById(R.id.avatar);
         nameText = findViewById(R.id.name);
@@ -177,14 +171,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         btnSend.setOnClickListener(v -> {
             String content = editMessage.getText().toString().trim();
             Log.d(TAG, "📤 SEND BUTTON CLICKED - Message: '" + content + "'");
-            
-            // DEBUG: Check for special test commands
-            if (content.equals("!test")) {
-                Log.d(TAG, "🧪 Special test command detected - Testing socket connection");
-                testSocketConnection();
-                editMessage.setText("");
-                return;
-            }
             
             if (!content.isEmpty()) {
                 sendMessage(content);
@@ -309,21 +295,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             Log.d(TAG, "🧪 No messages with messageId found or all already read");
             Toast.makeText(this, "All messages are read or missing IDs", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    /**
-     * DEBUG: Test socket connection
-     */
-    private void testSocketConnection() {
-        Log.d(TAG, "🧪 TESTING SOCKET CONNECTION FROM CHATDETAIL");
-        SocketManager.testSocketConnection();
-        
-        // Also test a simple emit
-        String userId = sessionManager.getCurrentUserId();
-        Log.d(TAG, "🧪 Testing message-sent emit with fake data");
-        SocketManager.emitMessageSent("test-message-id-" + System.currentTimeMillis(), chatId, userId);
-        
-        Toast.makeText(this, "Socket test - check logs", Toast.LENGTH_SHORT).show();
     }
 
     private void markAllMessagesAsRead() {

@@ -3,6 +3,7 @@ import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -27,7 +28,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("newdebug") {
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            storeFile = file("../debug-new.keystore")
+            storePassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("newdebug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -50,10 +63,15 @@ dependencies {
     implementation ("io.socket:socket.io-client:2.0.1")
     implementation("com.github.bumptech.glide:glide:4.15.1")
     annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+    
+    // Firebase Authentication
+    implementation("com.google.firebase:firebase-auth:22.3.1")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
-        implementation(libs.constraintlayout)
+    implementation(libs.constraintlayout)
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
     testImplementation(libs.junit)

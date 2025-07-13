@@ -4,6 +4,7 @@ import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.items.ChatItem;
 import fpt.edu.vn.fchat_mobile.models.UserStatus;
+import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
 import fpt.edu.vn.fchat_mobile.requests.SendMessageRequest;
@@ -49,6 +50,9 @@ public interface ApiService {
     Call<LoginResponse> resetPassword(
             @Field("email") String email
     );
+
+    @POST("api/auth/google-login")
+    Call<LoginResponse> googleLogin(@Body GoogleLoginRequest request);
 
     @GET("api/messages/{chatId}")
     Call<List<MessageResponse>> getMessagesByChatId(
