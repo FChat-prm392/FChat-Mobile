@@ -100,7 +100,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
                             DateUtils.FORMAT_ABBREV_RELATIVE
                     ).toString();
 
-                    holder.time.setText("Last seen " + translatedTime);
+                    holder.time.setText("Last seen " + relativeTime);
                 } catch (ParseException e) {
                     holder.time.setText("Last seen " + chat.getLastOnline());
                 } catch (Exception e) {
