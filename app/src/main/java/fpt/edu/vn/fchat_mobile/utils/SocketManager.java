@@ -452,12 +452,13 @@ public class SocketManager {
         }
     }
 
-    public static void emitCallMuteToggle(String callId, String userId, boolean isMuted) {
+    public static void emitCallMuteToggle(String callId, String userId, String participantId, boolean isMuted) {
         if (socket != null && socket.connected()) {
             try {
                 JSONObject data = new JSONObject();
                 data.put("callId", callId);
                 data.put("userId", userId);
+                data.put("participantId", participantId);
                 data.put("isMuted", isMuted);
                 socket.emit("call-mute", data);
                 Log.d(TAG, "🔇 EMITTED call-mute - Call ID: " + callId + ", Muted: " + isMuted);
@@ -467,12 +468,13 @@ public class SocketManager {
         }
     }
 
-    public static void emitCallVideoToggle(String callId, String userId, boolean isVideoOn) {
+    public static void emitCallVideoToggle(String callId, String userId, String participantId, boolean isVideoOn) {
         if (socket != null && socket.connected()) {
             try {
                 JSONObject data = new JSONObject();
                 data.put("callId", callId);
                 data.put("userId", userId);
+                data.put("participantId", participantId);
                 data.put("isVideoOn", isVideoOn);
                 socket.emit("call-video-toggle", data);
                 Log.d(TAG, "📹 EMITTED call-video-toggle - Call ID: " + callId + ", Video: " + isVideoOn);

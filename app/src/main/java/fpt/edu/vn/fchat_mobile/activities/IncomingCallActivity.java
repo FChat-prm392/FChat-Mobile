@@ -8,6 +8,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -23,7 +24,7 @@ import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
 
-public class IncomingCallActivity extends AppCompatActivity {
+public class IncomingCallActivity extends AppCompatActivity implements SocketManager.CallListener {
 
     private ImageView callerAvatar, backgroundBlur, callTypeIcon, answerIcon;
     private TextView callerName, callType, callStatus;
@@ -73,6 +74,7 @@ public class IncomingCallActivity extends AppCompatActivity {
         initViews();
         setupUI();
         setupClickListeners();
+        setupCallListeners();
         startRippleAnimation();
         startRingtone();
     }
@@ -158,6 +160,26 @@ public class IncomingCallActivity extends AppCompatActivity {
         }, delay);
     }
     
+    private void stopRippleAnimation() {
+        if (animationHandler != null && rippleRunnable != null) {
+            animationHandler.removeCallbacks(rippleRunnable);
+        }
+        
+        // Clear any pending animations on ripple views
+        if (ripple1 != null) {
+            ripple1.clearAnimation();
+            ripple1.animate().cancel();
+        }
+        if (ripple2 != null) {
+            ripple2.clearAnimation();
+            ripple2.animate().cancel();
+        }
+        if (ripple3 != null) {
+            ripple3.clearAnimation();
+            ripple3.animate().cancel();
+        }
+    }
+    
     private void setupClickListeners() {
         btnAnswer.setOnClickListener(v -> answerCall());
         btnDecline.setOnClickListener(v -> declineCall());
@@ -169,6 +191,11 @@ public class IncomingCallActivity extends AppCompatActivity {
         setupButtonAnimation(btnDecline);
         setupButtonAnimation(btnMute);
         setupButtonAnimation(btnMessage);
+    }
+    
+    private void setupCallListeners() {
+        // Setup SocketManager call listeners to handle call-ended events
+        SocketManager.setupCallListeners(this);
     }
     
     private void setupButtonAnimation(View button) {
@@ -329,5 +356,56 @@ public class IncomingCallActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         // Don't pause the activity - keep it running like Messenger
+    }
+
+    // CallListener interface implementations
+    @Override
+    public void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp) {
+        // Not needed in IncomingCallActivity - already handled by intent
+    }
+
+    @Override
+    public void onCallAnswered(String callId, long timestamp) {
+        // Not needed in IncomingCallActivity - handled by answer button
+    }
+
+    @Override
+    public void onCallDeclined(String callId, long timestamp) {
+        runOnUiThread(() -> {
+            Log.d("IncomingCallActivity", "Call declined by other participant: " + callId);
+            stopRingtone();
+            stopRippleAnimation();
+            finish();
+        });
+    }
+
+    @Override
+    public void onCallEnded(String callId, long timestamp) {
+        runOnUiThread(() -> {
+            Log.d("IncomingCallActivity", "Call ended by other participant: " + callId);
+            stopRingtone();
+            stopRippleAnimation();
+            finish();
+        });
+    }
+
+    @Override
+    public void onCallFailed(String callId, String reason) {
+        runOnUiThread(() -> {
+            Log.d("IncomingCallActivity", "Call failed: " + callId + ", reason: " + reason);
+            stopRingtone();
+            stopRippleAnimation();
+            finish();
+        });
+    }
+
+    @Override
+    public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
+        // Not needed in IncomingCallActivity
+    }
+
+    @Override
+    public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
+        // Not needed in IncomingCallActivity
     }
 }

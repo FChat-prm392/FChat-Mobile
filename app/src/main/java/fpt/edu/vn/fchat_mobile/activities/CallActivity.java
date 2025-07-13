@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -21,7 +22,7 @@ import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
 
-public class CallActivity extends AppCompatActivity {
+public class CallActivity extends AppCompatActivity implements SocketManager.CallListener {
 
     private ImageView avatarView, btnEndCall, btnMute, btnSpeaker, btnVideo;
     private TextView nameText, statusText, callDurationText;
@@ -89,6 +90,7 @@ public class CallActivity extends AppCompatActivity {
         initViews();
         setupCallUI();
         setupClickListeners();
+        setupCallListeners();
         
         if (isIncomingCall) {
             handleIncomingCall();
@@ -152,18 +154,21 @@ public class CallActivity extends AppCompatActivity {
         btnVideo.setOnClickListener(v -> toggleVideo());
     }
     
+    private void setupCallListeners() {
+        // Setup SocketManager call listeners to handle call-ended events
+        SocketManager.setupCallListeners(this);
+    }
+    
     private void handleIncomingCall() {
-        // Simulate incoming call UI
+        // Show incoming call UI
         statusText.setText("Incoming " + (isVideoCall ? "video" : "voice") + " call...");
         
-        // Auto-answer after 3 seconds for demo (in real app, user would tap answer button)
-        new Handler().postDelayed(() -> {
-            answerCall();
-        }, 3000);
+        // Wait for user to manually answer the call
+        // No auto-answer - user must use IncomingCallActivity to accept
     }
     
     private void initiateCall() {
-        statusText.setText("Connecting...");
+        statusText.setText("Calling...");
         
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
@@ -172,10 +177,8 @@ public class CallActivity extends AppCompatActivity {
         // Emit call initiation using SocketManager
         SocketManager.emitCallInitiate(callId, chatId, currentUserId, participantId, currentUserName, isVideoCall);
         
-        // Simulate call connection after 2 seconds
-        new Handler().postDelayed(() -> {
-            connectCall();
-        }, 2000);
+        // Wait for receiver to answer - no auto-connection
+        // Connection will happen when onCallAnswered() is triggered
     }
     
     private void answerCall() {
@@ -228,7 +231,7 @@ public class CallActivity extends AppCompatActivity {
         // Emit mute status using SocketManager
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
-        SocketManager.emitCallMuteToggle(callId, currentUserId, isMuted);
+        SocketManager.emitCallMuteToggle(callId, currentUserId, participantId, isMuted);
         
         Toast.makeText(this, isMuted ? "Muted" : "Unmuted", Toast.LENGTH_SHORT).show();
     }
@@ -263,7 +266,7 @@ public class CallActivity extends AppCompatActivity {
         // Emit video status using SocketManager
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
-        SocketManager.emitCallVideoToggle(callId, currentUserId, isVideoOn);
+        SocketManager.emitCallVideoToggle(callId, currentUserId, participantId, isVideoOn);
         
         Toast.makeText(this, isVideoOn ? "Video on" : "Video off", Toast.LENGTH_SHORT).show();
     }
@@ -292,5 +295,72 @@ public class CallActivity extends AppCompatActivity {
     public void onBackPressed() {
         // Prevent back button during call - user must use end call button
         Toast.makeText(this, "Use the end call button to hang up", Toast.LENGTH_SHORT).show();
+    }
+
+    // CallListener interface implementations
+    @Override
+    public void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp) {
+        // Not needed in CallActivity - handled by IncomingCallActivity
+    }
+
+    @Override
+    public void onCallAnswered(String callId, long timestamp) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "Call answered: " + callId);
+            connectCall();
+        });
+    }
+
+    @Override
+    public void onCallDeclined(String callId, long timestamp) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "Call declined: " + callId);
+            Toast.makeText(this, "Call declined", Toast.LENGTH_SHORT).show();
+            finish();
+        });
+    }
+
+    @Override
+    public void onCallEnded(String callId, long timestamp) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "Call ended by other participant: " + callId);
+            
+            // Stop duration timer
+            callDurationHandler.removeCallbacks(updateDurationRunnable);
+            
+            // Stop ringtone if playing
+            if (ringtone != null && ringtone.isPlaying()) {
+                ringtone.stop();
+                ringtone.release();
+            }
+            
+            Toast.makeText(this, "Call ended", Toast.LENGTH_SHORT).show();
+            finish();
+        });
+    }
+
+    @Override
+    public void onCallFailed(String callId, String reason) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "Call failed: " + callId + ", reason: " + reason);
+            Toast.makeText(this, "Call failed: " + reason, Toast.LENGTH_SHORT).show();
+            finish();
+        });
+    }
+
+    @Override
+    public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "User " + userId + " mute status: " + isMuted);
+            // Update UI to show other participant's mute status if needed
+        });
+    }
+
+    @Override
+    public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "User " + userId + " video status: " + isVideoOn);
+            // Update UI to show other participant's video status if needed
+        });
     }
 }

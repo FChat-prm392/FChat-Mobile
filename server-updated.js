@@ -525,7 +525,7 @@ io.on('connection', (socket) => {
     console.log(`🔇 Call mute toggled: ${data.callId}, muted: ${data.isMuted}`);
     
     // Notify other participant about mute status
-    const otherParticipantId = data.callerId === sessionManager?.getCurrentUserId() ? data.receiverId : data.callerId;
+    const otherParticipantId = data.participantId;
     const otherSocketId = onlineUsersManager.getSocketId(otherParticipantId);
     
     if (otherSocketId) {
@@ -541,7 +541,7 @@ io.on('connection', (socket) => {
     console.log(`📹 Video toggled: ${data.callId}, video: ${data.isVideoOn}`);
     
     // Notify other participant about video status
-    const otherParticipantId = data.callerId === sessionManager?.getCurrentUserId() ? data.receiverId : data.callerId;
+    const otherParticipantId = data.participantId;
     const otherSocketId = onlineUsersManager.getSocketId(otherParticipantId);
     
     if (otherSocketId) {
