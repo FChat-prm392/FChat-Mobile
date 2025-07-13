@@ -36,6 +36,30 @@ app.use('/api/chats', chatRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/friendships', friendshipRoutes);
 
+// Add route to get chat participants for calling functionality
+app.get('/api/chats/:chatId/participants', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const chat = await Chat.findById(chatId).populate('participants', '_id fullname username');
+    
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' });
+    }
+    
+    res.json({
+      chatId: chat._id,
+      participants: chat.participants.map(p => ({
+        _id: p._id,
+        fullname: p.fullname,
+        username: p.username
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching chat participants:', error);
+    res.status(500).json({ error: 'Failed to fetch chat participants' });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);
 
@@ -394,6 +418,139 @@ io.on('connection', (socket) => {
 
   socket.on('typing', ({ chatID, sender }) => {
     socket.to(chatID).emit('typing', { sender });
+  });
+
+  // Call handling events
+  socket.on('call-initiate', (data) => {
+    console.log(`📞 Call initiated: ${data.callerId} calling ${data.receiverId} in chat ${data.chatId}`);
+    
+    // Find receiver's socket and notify them of incoming call
+    const receiverSocketId = onlineUsersManager.getSocketId(data.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('incoming-call', {
+        callId: data.callId,
+        chatId: data.chatId,
+        callerId: data.callerId,
+        callerName: data.callerName || 'Unknown Caller',
+        isVideoCall: data.isVideoCall,
+        timestamp: data.timestamp
+      });
+      console.log(`📲 Incoming call notification sent to ${data.receiverId}`);
+    } else {
+      // Receiver socket not found - this could be due to:
+      // 1. User is offline
+      // 2. Socket temporarily disconnected
+      // 3. User on different device/app instance
+      console.log(`📵 Receiver ${data.receiverId} socket not found in onlineUsers map`);
+      console.log(`🔍 Current online users: ${Array.from(onlineUsersManager.getAll().keys()).join(', ')}`);
+      
+      // Instead of immediately failing, let's try to broadcast to all sockets for this user
+      // or wait a bit for the receiver to potentially reconnect
+      let callAttempted = false;
+      
+      // Broadcast to all connected sockets to try to reach the user
+      io.sockets.sockets.forEach((clientSocket) => {
+        if (clientSocket.userId === data.receiverId) {
+          clientSocket.emit('incoming-call', {
+            callId: data.callId,
+            chatId: data.chatId,
+            callerId: data.callerId,
+            callerName: data.callerName || 'Unknown Caller',
+            isVideoCall: data.isVideoCall,
+            timestamp: data.timestamp
+          });
+          console.log(`� Incoming call sent to ${data.receiverId} via fallback broadcast`);
+          callAttempted = true;
+        }
+      });
+      
+      if (!callAttempted) {
+        // Only fail after trying alternative methods
+        console.log(`❌ Could not reach receiver ${data.receiverId} - truly offline`);
+        socket.emit('call-failed', {
+          reason: 'Receiver is offline',
+          callId: data.callId
+        });
+      }
+    }
+  });
+
+  socket.on('call-answer', (data) => {
+    console.log(`✅ Call answered: ${data.callId}`);
+    
+    // Notify caller that call was answered
+    const callerSocketId = onlineUsersManager.getSocketId(data.callerId);
+    if (callerSocketId) {
+      io.to(callerSocketId).emit('call-answered', {
+        callId: data.callId,
+        timestamp: data.timestamp
+      });
+    }
+  });
+
+  socket.on('call-decline', (data) => {
+    console.log(`❌ Call declined: ${data.callId}`);
+    
+    // Notify caller that call was declined
+    const callerSocketId = onlineUsersManager.getSocketId(data.callerId);
+    if (callerSocketId) {
+      io.to(callerSocketId).emit('call-declined', {
+        callId: data.callId,
+        timestamp: data.timestamp
+      });
+    }
+  });
+
+  socket.on('call-end', (data) => {
+    console.log(`📞 Call ended: ${data.callId}`);
+    
+    // Notify both participants that call ended
+    const callerSocketId = onlineUsersManager.getSocketId(data.callerId);
+    const receiverSocketId = onlineUsersManager.getSocketId(data.receiverId);
+    
+    const callEndData = {
+      callId: data.callId,
+      timestamp: data.timestamp
+    };
+    
+    if (callerSocketId) {
+      io.to(callerSocketId).emit('call-ended', callEndData);
+    }
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('call-ended', callEndData);
+    }
+  });
+
+  socket.on('call-mute', (data) => {
+    console.log(`🔇 Call mute toggled: ${data.callId}, muted: ${data.isMuted}`);
+    
+    // Notify other participant about mute status
+    const otherParticipantId = data.callerId === sessionManager?.getCurrentUserId() ? data.receiverId : data.callerId;
+    const otherSocketId = onlineUsersManager.getSocketId(otherParticipantId);
+    
+    if (otherSocketId) {
+      io.to(otherSocketId).emit('call-mute-status', {
+        callId: data.callId,
+        userId: data.userId,
+        isMuted: data.isMuted
+      });
+    }
+  });
+
+  socket.on('call-video-toggle', (data) => {
+    console.log(`📹 Video toggled: ${data.callId}, video: ${data.isVideoOn}`);
+    
+    // Notify other participant about video status
+    const otherParticipantId = data.callerId === sessionManager?.getCurrentUserId() ? data.receiverId : data.callerId;
+    const otherSocketId = onlineUsersManager.getSocketId(otherParticipantId);
+    
+    if (otherSocketId) {
+      io.to(otherSocketId).emit('call-video-status', {
+        callId: data.callId,
+        userId: data.userId,
+        isVideoOn: data.isVideoOn
+      });
+    }
   });
 
   socket.on('disconnect', async () => {

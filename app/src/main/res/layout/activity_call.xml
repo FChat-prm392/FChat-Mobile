@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1a1a1a">
+
+    <!-- Video Container (for video calls) -->
+    <FrameLayout
+        android:id="@+id/video_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone">
+        
+        <!-- Remote video would go here -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#333333" />
+        
+        <!-- Local video preview (small window) -->
+        <FrameLayout
+            android:layout_width="120dp"
+            android:layout_height="160dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="16dp"
+            android:background="#555555"
+            android:elevation="4dp">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="You"
+                android:textColor="#ffffff"
+                android:textSize="12sp" />
+        </FrameLayout>
+    </FrameLayout>
+
+    <!-- Avatar (for voice calls) -->
+    <ImageView
+        android:id="@+id/call_avatar"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="120dp"
+        android:background="@drawable/circle_background"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_avatar" />
+
+    <!-- Call Info -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/call_avatar"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/call_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="John Doe"
+            android:textColor="#ffffff"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/call_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Calling..."
+            android:textColor="#cccccc"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/call_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="00:00"
+            android:textColor="#ffffff"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Call Controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="80dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="32dp">
+
+        <!-- Mute Button -->
+        <ImageView
+            android:id="@+id/btn_mute"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="24dp"
+            android:background="@drawable/circle_button_background"
+            android:padding="16dp"
+            android:src="@drawable/ic_mic_new"
+            android:tint="#ffffff" />
+
+        <!-- End Call Button -->
+        <ImageView
+            android:id="@+id/btn_end_call"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginHorizontal="16dp"
+            android:background="@drawable/circle_button_red"
+            android:padding="18dp"
+            android:src="@drawable/ic_call_end"
+            android:tint="#ffffff" />
+
+        <!-- Speaker Button -->
+        <ImageView
+            android:id="@+id/btn_speaker"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="24dp"
+            android:background="@drawable/circle_button_background"
+            android:padding="16dp"
+            android:src="@drawable/ic_speaker_off"
+            android:tint="#ffffff" />
+
+        <!-- Video Toggle Button (only visible for video calls) -->
+        <ImageView
+            android:id="@+id/btn_video"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="24dp"
+            android:background="@drawable/circle_button_background"
+            android:padding="16dp"
+            android:src="@drawable/ic_video"
+            android:tint="#ffffff"
+            android:visibility="gone" />
+    </LinearLayout>
+
+</RelativeLayout>

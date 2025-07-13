@@ -111,6 +111,9 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
 
         // Setup chat list listeners for real-time updates
         SocketManager.setupChatListListeners(this);
+        
+        // Setup call listeners for incoming calls
+        setupCallListeners();
 
         socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
             @Override
@@ -201,6 +204,63 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
                 }
             }
         });
+
+        // Interface implementation for chat list updates
+    }
+    
+    // Add call listener implementation
+    private void setupCallListeners() {
+        SocketManager.setupCallListeners(new SocketManager.CallListener() {
+            @Override
+            public void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp) {
+                runOnUiThread(() -> {
+                    Log.d(TAG, "📲 Incoming call from: " + callerName);
+                    
+                    // Start IncomingCallActivity
+                    Intent incomingCallIntent = new Intent(ChatListActivity.this, IncomingCallActivity.class);
+                    incomingCallIntent.putExtra("callId", callId);
+                    incomingCallIntent.putExtra("chatId", chatId);
+                    incomingCallIntent.putExtra("callerId", callerId);
+                    incomingCallIntent.putExtra("callerName", callerName);
+                    incomingCallIntent.putExtra("isVideoCall", isVideoCall);
+                    incomingCallIntent.putExtra("timestamp", timestamp);
+                    incomingCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(incomingCallIntent);
+                });
+            }
+
+            @Override
+            public void onCallAnswered(String callId, long timestamp) {
+                // Handle call answered (if needed in chat list)
+            }
+
+            @Override
+            public void onCallDeclined(String callId, long timestamp) {
+                // Handle call declined (if needed in chat list)
+            }
+
+            @Override
+            public void onCallEnded(String callId, long timestamp) {
+                // Handle call ended (if needed in chat list)
+            }
+
+            @Override
+            public void onCallFailed(String callId, String reason) {
+                runOnUiThread(() -> {
+                    Toast.makeText(ChatListActivity.this, "Call failed: " + reason, Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
+                // Handle mute status (if needed in chat list)
+            }
+
+            @Override
+            public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
+                // Handle video status (if needed in chat list)
+            }
+        });
     }
 
     private void setupTabs() {
@@ -266,6 +326,12 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
                                 false, // Default isOnline to false, updated by fetchUserStatus
                                 chat.getGroupName() != null
                         );
+                        
+                        // Set participant ID for non-group chats
+                        if (participantId != null) {
+                            chatItem.setParticipantId(participantId);
+                        }
+                        
                         chatList.add(chatItem);
                         if (participantId != null) {
                             participantChatMap.put(participantId, chat.getId());
@@ -352,34 +418,38 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
         return null;
     }
 
+    // Interface implementation for ChatListListener
     @Override
     public void onChatListMessageUpdate(String chatId, String lastMessage, String senderName, String timestamp) {
-        Log.d(TAG, "📋 Chat list update - Chat: " + chatId + ", Message: '" + lastMessage + "', From: " + senderName);
-
         runOnUiThread(() -> {
-            // Find the chat item in the list and update it
-            for (int i = 0; i < chatList.size(); i++) {
-                ChatItem chatItem = chatList.get(i);
-                if (chatItem.getId().equals(chatId)) {
-                    // Format the message with sender name
-                    String formattedMessage = senderName + ": " + lastMessage;
-
-                    // Update the chat item
-                    chatItem.setMessage(formattedMessage);
-                    chatItem.setTime(formatTimestamp(timestamp));
-
-                    // Move chat to top of list for better UX
-                    chatList.remove(i);
-                    chatList.add(0, chatItem);
-
-                    // Notify adapter of changes
-                    chatAdapter.notifyDataSetChanged();
-
-                    Log.d(TAG, "✅ Updated chat list item: " + chatItem.getName());
-                    break;
-                }
-            }
+            Log.d(TAG, "📋 Updating chat list for chat: " + chatId);
+            updateChatListItem(chatId, lastMessage, senderName, timestamp);
         });
+    }
+
+    private void updateChatListItem(String chatId, String lastMessage, String senderName, String timestamp) {
+        // Find the chat item in the list and update it
+        for (int i = 0; i < chatList.size(); i++) {
+            ChatItem chatItem = chatList.get(i);
+            if (chatItem.getId().equals(chatId)) {
+                // Format the message with sender name
+                String formattedMessage = senderName + ": " + lastMessage;
+
+                // Update the chat item
+                chatItem.setMessage(formattedMessage);
+                chatItem.setTime(formatTimestamp(timestamp));
+
+                // Move chat to top of list for better UX
+                chatList.remove(i);
+                chatList.add(0, chatItem);
+
+                // Notify adapter of changes
+                chatAdapter.notifyDataSetChanged();
+
+                Log.d(TAG, "✅ Updated chat list item: " + chatItem.getName());
+                break;
+            }
+        }
     }
 
     private String formatTimestamp(String timestamp) {

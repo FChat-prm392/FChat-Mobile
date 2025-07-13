@@ -55,6 +55,22 @@
         <activity
             android:name=".activities.EditProfileActivity"
             android:exported="false" /> <!-- Giao diện chat chi tiết -->
+        <!-- Call Activity -->
+        <activity
+            android:name=".activities.CallActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:launchMode="singleTop" />
+        <!-- Incoming Call Activity -->
+        <activity
+            android:name=".activities.IncomingCallActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:launchMode="singleTop"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true" />
+
+        <!-- Giao diện chat chi tiết -->
         <activity
             android:name=".activities.ChatDetailActivity"
             android:exported="false" /> <!-- Giao diện danh sách chat (chuyển sang sau login) -->

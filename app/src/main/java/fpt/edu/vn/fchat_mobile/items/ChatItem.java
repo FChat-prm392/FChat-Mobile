@@ -11,6 +11,7 @@ public class ChatItem {
     public String lastOnline;
     public boolean isTyping;
     public String typingUser;
+    public String participantId; // Add participant ID for non-group chats
 
     public ChatItem(String id, String name, String message, String time, String avatarUrl, boolean isOnline, boolean isGroup) {
         this.id = id;
@@ -23,6 +24,7 @@ public class ChatItem {
         this.lastOnline = null;
         this.isTyping = false;
         this.typingUser = null;
+        this.participantId = null;
     }
 
     public String getId() { return id; }
@@ -35,10 +37,13 @@ public class ChatItem {
     public String getLastOnline() { return lastOnline; }
     public boolean isTyping() { return isTyping; }
     public String getTypingUser() { return typingUser; }
+    public String getParticipantId() { return participantId; }
+    
     public void setOnline(boolean isOnline) { this.isOnline = isOnline; }
     public void setLastOnline(String lastOnline) { this.lastOnline = lastOnline; }
     public void setMessage(String message) { this.message = message; }
     public void setTime(String time) { this.time = time; }
     public void setTyping(boolean isTyping) { this.isTyping = isTyping; }
     public void setTypingUser(String typingUser) { this.typingUser = typingUser; }
+    public void setParticipantId(String participantId) { this.participantId = participantId; }
 }

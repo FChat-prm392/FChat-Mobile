@@ -53,7 +53,7 @@ import retrofit2.Response;
 
 public class ChatDetailActivity extends AppCompatActivity implements SocketManager.MessageStatusListener {
 
-    private ImageView avatarView, btnSend, btnMic, btnCamera;
+    private ImageView avatarView, btnSend, btnMic, btnCamera, btnCall, btnVideo;
     private TextView nameText, statusText;
     private EditText editMessage;
     private TypingIndicatorView typingIndicator;
@@ -62,6 +62,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     private final List<MessageItem> messageList = new ArrayList<>();
     private MessageAdapter messageAdapter;
     private String chatId;
+    private String participantId; // Store the other participant's ID
     private SessionManager sessionManager;
     private static final String TAG = "ChatDetailActivity";
 
@@ -113,6 +114,8 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         btnSend = findViewById(R.id.btn_send);
         btnMic = findViewById(R.id.btn_mic);
         btnCamera = findViewById(R.id.btn_camera);
+        btnCall = findViewById(R.id.btn_call);
+        btnVideo = findViewById(R.id.btn_video);
         
         // Initialize typing indicator
         typingIndicator = findViewById(R.id.typing_indicator);
@@ -120,6 +123,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         Intent intent = getIntent();
         chatId = intent.getStringExtra("chatId");
+        participantId = intent.getStringExtra("participantId");
         String name = intent.getStringExtra("name");
         String status = intent.getStringExtra("status");
         String avatarUrl = intent.getStringExtra("avatarUrl");
@@ -132,10 +136,13 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 .placeholder(R.drawable.ic_avatar)
                 .into(avatarView);
 
-        // Initialize socket and setup listeners AFTER we have chatId
+        // Initialize socket and setup listeners
         SocketManager.initializeSocket();
         SocketManager.setupMessageStatusListeners(this);
         
+        // Setup call listeners for incoming calls
+        setupCallListeners();
+
         // Join the chat room for real-time updates
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
@@ -228,6 +235,10 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 openCamera();
             }
         });
+
+        // Call button listeners
+        btnCall.setOnClickListener(v -> startVoiceCall());
+        btnVideo.setOnClickListener(v -> startVideoCall());
 
         editMessage.addTextChangedListener(new TextWatcher() {
             @Override
@@ -795,6 +806,59 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         }
     }
     
+    private void startVoiceCall() {
+        String otherParticipantId = getOtherParticipantId();
+        if (otherParticipantId == null) {
+            Toast.makeText(this, "Cannot start call: Participant ID not found. Please check your chat data setup.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        Intent callIntent = new Intent(this, CallActivity.class);
+        callIntent.putExtra("chatId", chatId);
+        callIntent.putExtra("participantName", nameText.getText().toString());
+        callIntent.putExtra("participantId", otherParticipantId);
+        callIntent.putExtra("avatarUrl", getIntent().getStringExtra("avatarUrl"));
+        callIntent.putExtra("isVideoCall", false);
+        callIntent.putExtra("isIncomingCall", false);
+        startActivity(callIntent);
+    }
+    
+    private void startVideoCall() {
+        String otherParticipantId = getOtherParticipantId();
+        if (otherParticipantId == null) {
+            Toast.makeText(this, "Cannot start call: Participant ID not found. Please check your chat data setup.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        Intent callIntent = new Intent(this, CallActivity.class);
+        callIntent.putExtra("chatId", chatId);
+        callIntent.putExtra("participantName", nameText.getText().toString());
+        callIntent.putExtra("participantId", otherParticipantId);
+        callIntent.putExtra("avatarUrl", getIntent().getStringExtra("avatarUrl"));
+        callIntent.putExtra("isVideoCall", true);
+        callIntent.putExtra("isIncomingCall", false);
+        startActivity(callIntent);
+    }
+    
+    private String getOtherParticipantId() {
+        // Return the actual participant ID passed from the chat list
+        if (participantId != null && !participantId.isEmpty()) {
+            return participantId;
+        }
+        
+        // Fallback: For testing, use a different approach
+        // In a real implementation, you would fetch the chat participants from the server
+        Log.w("ChatDetailActivity", "No participantId found, need to fetch from server or set properly in ChatItem");
+        
+        // TODO: You need to either:
+        // 1. Update your chat list API to include participant IDs
+        // 2. Make an API call here to get chat participants
+        // 3. For testing, manually replace this with a real user ID from your database
+        
+        // For now, return null to indicate the issue needs to be fixed
+        return null;
+    }
+    
     private String formatMessageTime(String timestamp) {
         if (timestamp == null || timestamp.isEmpty()) {
             // Return current time if no timestamp
@@ -816,5 +880,60 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
             return timeFormat.format(new Date());
         }
+    }
+    
+    // Add call listener implementation
+    private void setupCallListeners() {
+        SocketManager.setupCallListeners(new SocketManager.CallListener() {
+            @Override
+            public void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp) {
+                runOnUiThread(() -> {
+                    Log.d(TAG, "📲 Incoming call from: " + callerName + " while in chat");
+                    
+                    // Start IncomingCallActivity
+                    Intent incomingCallIntent = new Intent(ChatDetailActivity.this, IncomingCallActivity.class);
+                    incomingCallIntent.putExtra("callId", callId);
+                    incomingCallIntent.putExtra("chatId", chatId);
+                    incomingCallIntent.putExtra("callerId", callerId);
+                    incomingCallIntent.putExtra("callerName", callerName);
+                    incomingCallIntent.putExtra("isVideoCall", isVideoCall);
+                    incomingCallIntent.putExtra("timestamp", timestamp);
+                    incomingCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(incomingCallIntent);
+                });
+            }
+
+            @Override
+            public void onCallAnswered(String callId, long timestamp) {
+                // Handle call answered
+            }
+
+            @Override
+            public void onCallDeclined(String callId, long timestamp) {
+                // Handle call declined
+            }
+
+            @Override
+            public void onCallEnded(String callId, long timestamp) {
+                // Handle call ended
+            }
+
+            @Override
+            public void onCallFailed(String callId, String reason) {
+                runOnUiThread(() -> {
+                    Toast.makeText(ChatDetailActivity.this, "Call failed: " + reason, Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
+                // Handle mute status
+            }
+
+            @Override
+            public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
+                // Handle video status
+            }
+        });
     }
 }

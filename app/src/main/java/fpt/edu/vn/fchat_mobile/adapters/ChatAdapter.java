@@ -121,6 +121,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
             Intent intent = new Intent(context, ChatDetailActivity.class);
             intent.putExtra("chatId", chat.getId());
             intent.putExtra("name", chat.getName());
+            intent.putExtra("participantId", chat.getParticipantId()); // Add participant ID
             String status;
             if (!chat.isGroup()) {
                 if (chat.isOnline()) {

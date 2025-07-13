@@ -383,4 +383,231 @@ public class SocketManager {
     public interface ChatListListener {
         void onChatListMessageUpdate(String chatId, String lastMessage, String senderName, String timestamp);
     }
+
+    // Call Methods
+    public static void emitCallInitiate(String callId, String chatId, String callerId, String receiverId, String callerName, boolean isVideoCall) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("callId", callId);
+                data.put("chatId", chatId);
+                data.put("callerId", callerId);
+                data.put("receiverId", receiverId);
+                data.put("callerName", callerName);
+                data.put("isVideoCall", isVideoCall);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("call-initiate", data);
+                Log.d(TAG, "📞 EMITTED call-initiate - Call ID: " + callId + ", Caller: " + callerName + ", Receiver: " + receiverId);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting call-initiate", e);
+            }
+        }
+    }
+
+    public static void emitCallAnswer(String callId, String callerId, String receiverId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("callId", callId);
+                data.put("callerId", callerId);
+                data.put("receiverId", receiverId);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("call-answer", data);
+                Log.d(TAG, "✅ EMITTED call-answer - Call ID: " + callId);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting call-answer", e);
+            }
+        }
+    }
+
+    public static void emitCallDecline(String callId, String callerId, String receiverId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("callId", callId);
+                data.put("callerId", callerId);
+                data.put("receiverId", receiverId);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("call-decline", data);
+                Log.d(TAG, "❌ EMITTED call-decline - Call ID: " + callId);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting call-decline", e);
+            }
+        }
+    }
+
+    public static void emitCallEnd(String callId, String callerId, String receiverId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("callId", callId);
+                data.put("callerId", callerId);
+                data.put("receiverId", receiverId);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("call-end", data);
+                Log.d(TAG, "📞 EMITTED call-end - Call ID: " + callId);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting call-end", e);
+            }
+        }
+    }
+
+    public static void emitCallMuteToggle(String callId, String userId, boolean isMuted) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("callId", callId);
+                data.put("userId", userId);
+                data.put("isMuted", isMuted);
+                socket.emit("call-mute", data);
+                Log.d(TAG, "🔇 EMITTED call-mute - Call ID: " + callId + ", Muted: " + isMuted);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting call-mute", e);
+            }
+        }
+    }
+
+    public static void emitCallVideoToggle(String callId, String userId, boolean isVideoOn) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("callId", callId);
+                data.put("userId", userId);
+                data.put("isVideoOn", isVideoOn);
+                socket.emit("call-video-toggle", data);
+                Log.d(TAG, "📹 EMITTED call-video-toggle - Call ID: " + callId + ", Video: " + isVideoOn);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting call-video-toggle", e);
+            }
+        }
+    }
+
+    // Setup listeners for call events
+    public static void setupCallListeners(CallListener listener) {
+        if (socket != null && listener != null) {
+            // Listen for incoming calls
+            socket.on("incoming-call", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    String chatId = data.getString("chatId");
+                    String callerId = data.getString("callerId");
+                    String callerName = data.optString("callerName", "Unknown Caller");
+                    boolean isVideoCall = data.getBoolean("isVideoCall");
+                    long timestamp = data.getLong("timestamp");
+                    
+                    Log.d(TAG, "📲 INCOMING CALL - From: " + callerName + " (" + callerId + "), Video: " + isVideoCall);
+                    
+                    listener.onIncomingCall(callId, chatId, callerId, callerName, isVideoCall, timestamp);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing incoming-call", e);
+                }
+            });
+
+            // Listen for call answered
+            socket.on("call-answered", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    long timestamp = data.getLong("timestamp");
+                    
+                    Log.d(TAG, "✅ CALL ANSWERED - Call ID: " + callId);
+                    
+                    listener.onCallAnswered(callId, timestamp);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing call-answered", e);
+                }
+            });
+
+            // Listen for call declined
+            socket.on("call-declined", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    long timestamp = data.getLong("timestamp");
+                    
+                    Log.d(TAG, "❌ CALL DECLINED - Call ID: " + callId);
+                    
+                    listener.onCallDeclined(callId, timestamp);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing call-declined", e);
+                }
+            });
+
+            // Listen for call ended
+            socket.on("call-ended", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    long timestamp = data.getLong("timestamp");
+                    
+                    Log.d(TAG, "📞 CALL ENDED - Call ID: " + callId);
+                    
+                    listener.onCallEnded(callId, timestamp);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing call-ended", e);
+                }
+            });
+
+            // Listen for call failed
+            socket.on("call-failed", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    String reason = data.optString("reason", "Unknown error");
+                    
+                    Log.d(TAG, "❌ CALL FAILED - Call ID: " + callId + ", Reason: " + reason);
+                    
+                    listener.onCallFailed(callId, reason);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing call-failed", e);
+                }
+            });
+
+            // Listen for mute status updates
+            socket.on("call-mute-status", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    String userId = data.getString("userId");
+                    boolean isMuted = data.getBoolean("isMuted");
+                    
+                    Log.d(TAG, "🔇 CALL MUTE STATUS - Call ID: " + callId + ", User: " + userId + ", Muted: " + isMuted);
+                    
+                    listener.onCallMuteStatus(callId, userId, isMuted);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing call-mute-status", e);
+                }
+            });
+
+            // Listen for video status updates
+            socket.on("call-video-status", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String callId = data.getString("callId");
+                    String userId = data.getString("userId");
+                    boolean isVideoOn = data.getBoolean("isVideoOn");
+                    
+                    Log.d(TAG, "📹 CALL VIDEO STATUS - Call ID: " + callId + ", User: " + userId + ", Video: " + isVideoOn);
+                    
+                    listener.onCallVideoStatus(callId, userId, isVideoOn);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing call-video-status", e);
+                }
+            });
+            
+            Log.d(TAG, "✅ Call listeners setup complete");
+        }
+    }
+
+    // Interface for handling call events
+    public interface CallListener {
+        void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp);
+        void onCallAnswered(String callId, long timestamp);
+        void onCallDeclined(String callId, long timestamp);
+        void onCallEnded(String callId, long timestamp);
+        void onCallFailed(String callId, String reason);
+        void onCallMuteStatus(String callId, String userId, boolean isMuted);
+        void onCallVideoStatus(String callId, String userId, boolean isVideoOn);
+    }
 }
