@@ -92,9 +92,19 @@ public class SessionManager {
      * Clear user session (logout)
      */
     public void logout() {
-        editor.clear();
-        editor.apply();
+    String userId = getCurrentUserId();
+    
+    if (userId != null) {
+          SocketManager.initializeSocket();
+          SocketManager.emitUserLogout(userId);
+
     }
+    
+    editor.clear();
+    editor.apply();
+}
+
+
 
     /**
      * Check if user session exists and is valid

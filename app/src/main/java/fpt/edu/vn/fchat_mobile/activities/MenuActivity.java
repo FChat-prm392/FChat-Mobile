@@ -12,12 +12,14 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
+import fpt.edu.vn.fchat_mobile.utils.SocketManager;
 
 public class MenuActivity extends AppCompatActivity {
 
     ImageView avatarView;
     TextView nameView;
     Button settingsButton;
+    Button logoutButton;
     SessionManager sessionManager;
 
     @Override
@@ -28,15 +30,21 @@ public class MenuActivity extends AppCompatActivity {
         avatarView = findViewById(R.id.avatar);
         nameView = findViewById(R.id.name);
         settingsButton = findViewById(R.id.btn_settings);
+        logoutButton = findViewById(R.id.btn_logout);
         
         sessionManager = new SessionManager(this);
         
-        Button logoutButton = findViewById(R.id.btn_logout);
         logoutButton.setOnClickListener(v -> {
-            sessionManager.logout();
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-        });
+    String userId = sessionManager.getCurrentUserId();
+    if (userId != null) {
+        SocketManager.initializeSocket();
+        SocketManager.emitUserLogout(userId);
+    }
+    
+    sessionManager.logout();
+    startActivity(new Intent(this, LoginActivity.class));
+    finish();
+});
         
         // Check if user is logged in
         if (!sessionManager.hasValidSession()) {

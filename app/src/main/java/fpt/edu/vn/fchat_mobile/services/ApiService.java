@@ -3,6 +3,7 @@ package fpt.edu.vn.fchat_mobile.services;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.items.ChatItem;
+import fpt.edu.vn.fchat_mobile.models.UserStatus;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
 import fpt.edu.vn.fchat_mobile.requests.SendMessageRequest;
@@ -40,6 +41,8 @@ public interface ApiService {
             @Query("limit") int limit
     );
 
+    @GET("api/accounts/status/{userId}")
+    Call<UserStatus> getUserStatus(@Path("userId") String userId);
 
 
     @GET("api/chats/user/{userId}")

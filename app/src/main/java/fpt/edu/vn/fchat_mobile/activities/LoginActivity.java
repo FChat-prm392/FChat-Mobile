@@ -13,10 +13,14 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
-import fpt.edu.vn.fchat_mobile.repositories.AuthRepository;
+import fpt.edu.vn.fchat_mobile.services.ApiService;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
+import fpt.edu.vn.fchat_mobile.utils.SocketManager;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -28,8 +32,9 @@ public class LoginActivity extends AppCompatActivity {
     private MaterialButton loginButton;
     private TextView forgetPasswordText, registerText;
 
-    private AuthRepository authRepository;
+    private ApiService apiService;
     private SessionManager sessionManager;
+    private Socket socket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +42,7 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         initViews();
+        setupSocket();
         setupListeners();
     }
 
@@ -48,8 +54,40 @@ public class LoginActivity extends AppCompatActivity {
         loginButton = findViewById(R.id.loginButton);
         forgetPasswordText = findViewById(R.id.forgetPasswordText);
         registerText = findViewById(R.id.registerText);
-        authRepository = new AuthRepository();
+        apiService = ApiClient.getService();
         sessionManager = new SessionManager(this);
+    }
+
+    private void setupSocket() {
+        SocketManager.initializeSocket();
+        socket = SocketManager.getSocket();
+
+        socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
+            @Override
+            public void call(Object... args) {
+                runOnUiThread(() -> {
+                    Toast.makeText(LoginActivity.this, "Connected to server", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+
+        socket.on(Socket.EVENT_DISCONNECT, new Emitter.Listener() {
+            @Override
+            public void call(Object... args) {
+                runOnUiThread(() -> {
+                    Toast.makeText(LoginActivity.this, "Disconnected from server", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+
+        socket.on(Socket.EVENT_CONNECT_ERROR, new Emitter.Listener() {
+            @Override
+            public void call(Object... args) {
+                runOnUiThread(() -> {
+                    Toast.makeText(LoginActivity.this, "Connection error", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void setupListeners() {
@@ -87,17 +125,19 @@ public class LoginActivity extends AppCompatActivity {
 
     private void login(String email, String password) {
         LoginRequest request = new LoginRequest(email, password);
-        authRepository.login(request, new Callback<LoginResponse>() {
+        apiService.login(request).enqueue(new Callback<LoginResponse>() {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().getUser() != null) {
                     // Save user session
                     sessionManager.saveUserSession(response.body().getUser());
-                    
+
+                    String userId = response.body().getUser().getId();
+                    socket.emit("register-user", userId);
+
                     String name = response.body().getUser().getFullname();
                     Toast.makeText(LoginActivity.this, "Welcome " + name, Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(LoginActivity.this, ChatListActivity.class));
-                    finish();
                 } else {
                     Toast.makeText(LoginActivity.this, "Invalid credentials", Toast.LENGTH_SHORT).show();
                 }
@@ -108,5 +148,11 @@ public class LoginActivity extends AppCompatActivity {
                 Toast.makeText(LoginActivity.this, "Login failed: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        SocketManager.disconnectSocket();
     }
 }
