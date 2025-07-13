@@ -25,12 +25,17 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import fpt.edu.vn.fchat_mobile.R;
-import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
-import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
 import fpt.edu.vn.fchat_mobile.repositories.AuthRepository;
+import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
+import fpt.edu.vn.fchat_mobile.utils.FileUtils;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -109,8 +114,7 @@ public class RegisterActivity extends AppCompatActivity {
     private void setupGenderDropdown() {
         ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_dropdown_item_1line,
-                new String[]{"Male", "Female", "Other"}
-        );
+                new String[]{"Male", "Female", "Other"});
         genderInput.setAdapter(genderAdapter);
         genderInput.setOnClickListener(v -> genderInput.showDropDown());
     }
@@ -198,30 +202,54 @@ public class RegisterActivity extends AppCompatActivity {
 
         if (!isValid) return;
 
-        RegisterRequest request = new RegisterRequest(
-                fullname, username, email, password, gender, phone,
-                "N/A", // imageURL
-                "Online.", // currentStatus
-                "dummyfcmtoken" // FCM placeholder
-        );
-
-        authRepository.register(request, new Callback<RegisterResponse>() {
-            @Override
-            public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
-                if (response.isSuccessful()) {
-                    Toast.makeText(RegisterActivity.this, "Registered successfully!", Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(RegisterActivity.this, "Register failed: In  valid data", Toast.LENGTH_SHORT).show();
-                }
+        // Prepare file
+        File imageFile = null;
+        try {
+            if (selectedImageUri != null) {
+                imageFile = new File(FileUtils.getPath(this, selectedImageUri));
+            } else if (selectedCameraBitmap != null) {
+                imageFile = FileUtils.saveBitmapToFile(this, selectedCameraBitmap);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-            @Override
-            public void onFailure(Call<RegisterResponse> call, Throwable t) {
-                Toast.makeText(RegisterActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        // RequestBody for form fields
+        RequestBody rbFullname = RequestBody.create(MediaType.parse("text/plain"), fullname);
+        RequestBody rbUsername = RequestBody.create(MediaType.parse("text/plain"), username);
+        RequestBody rbEmail = RequestBody.create(MediaType.parse("text/plain"), email);
+        RequestBody rbPassword = RequestBody.create(MediaType.parse("text/plain"), password);
+        RequestBody rbGender = RequestBody.create(MediaType.parse("text/plain"), gender);
+        RequestBody rbPhone = RequestBody.create(MediaType.parse("text/plain"), phone);
+        RequestBody rbStatus = RequestBody.create(MediaType.parse("text/plain"), "Online.");
+        RequestBody rbFcm = RequestBody.create(MediaType.parse("text/plain"), "dummyfcmtoken");
+
+        MultipartBody.Part imagePart = null;
+        if (imageFile != null) {
+            RequestBody fileBody = RequestBody.create(MediaType.parse("image/*"), imageFile);
+            imagePart = MultipartBody.Part.createFormData("image", imageFile.getName(), fileBody);
+        }
+
+        authRepository.registerWithImage(
+                imagePart, rbFullname, rbUsername, rbEmail, rbPassword,
+                rbGender, rbPhone, rbStatus, rbFcm,
+                new Callback<RegisterResponse>() {
+                    @Override
+                    public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
+                        if (response.isSuccessful()) {
+                            Toast.makeText(RegisterActivity.this, "Registration successful", Toast.LENGTH_SHORT).show();
+                            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                            finish();
+                        } else {
+                            Toast.makeText(RegisterActivity.this, "Registration failed", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<RegisterResponse> call, Throwable t) {
+                        Toast.makeText(RegisterActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     @Override
