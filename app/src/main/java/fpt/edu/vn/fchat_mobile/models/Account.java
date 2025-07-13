@@ -12,7 +12,6 @@ public class Account {
     private boolean isOnline;
     private String lastOnline;
 
-    // Constructors
     public Account() {}
 
     public Account(String _id, String fullname, String username, String email, String imageURL) {
@@ -23,7 +22,6 @@ public class Account {
         this.imageURL = imageURL;
     }
 
-    // Getters and Setters
     public String get_id() {
         return _id;
     }

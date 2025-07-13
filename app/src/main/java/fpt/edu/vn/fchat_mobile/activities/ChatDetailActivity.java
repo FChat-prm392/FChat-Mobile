@@ -122,7 +122,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             return;
         }
         
-        // Debug session info
         String currentUserId = sessionManager.getCurrentUserId();
         String currentUserName = sessionManager.getCurrentUserUsername();
 
@@ -155,29 +154,23 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 .placeholder(R.drawable.ic_avatar)
                 .into(avatarView);
 
-        // Initialize socket and setup listeners
         SocketManager.initializeSocket();
         SocketManager.setupMessageStatusListeners(this);
         
-        // Setup call listeners for incoming calls
         setupCallListeners();
 
-        // Join the chat room for real-time updates
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
         }
         
-        // Register user for online status
         if (currentUserId != null) {
             SocketManager.registerUser(currentUserId);
         }
         
-        // Notify that user entered chat
         if (chatId != null && currentUserId != null) {
             SocketManager.emitUserEnteredChat(chatId, currentUserId);
         }
         
-        // Request status sync for this chat when entering
         if (chatId != null && currentUserId != null) {
             SocketManager.requestChatStatusSync(chatId, currentUserId);
         }
@@ -216,7 +209,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
         });
         
-        // Add typing indicator for text input
         editMessage.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -242,7 +234,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
         });
 
-        // Call button listeners
         btnCall.setOnClickListener(v -> startVoiceCall());
         btnVideo.setOnClickListener(v -> startVideoCall());
 
@@ -301,20 +292,16 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
     private void fetchMessages(String chatId) {
         if (chatId == null || chatId.isEmpty()) {
-            Log.e(TAG, "Cannot fetch messages: chatId is null or empty");
             return;
         }
 
-        Log.d(TAG, "Fetching messages for chat ID: " + chatId);
-
         ApiService apiService = ApiClient.getService();
-        retrofit2.Call<List<MessageResponse>> call = apiService.getMessagesByChatId(chatId, 100); // limit to 100 messages
+        retrofit2.Call<List<MessageResponse>> call = apiService.getMessagesByChatId(chatId, 100);
         call.enqueue(new retrofit2.Callback<List<MessageResponse>>() {
             @Override
             public void onResponse(retrofit2.Call<List<MessageResponse>> call, retrofit2.Response<List<MessageResponse>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     List<MessageResponse> messages = response.body();
-                    Log.d(TAG, "Received " + messages.size() + " messages");
 
                     messages.sort((msg1, msg2) -> {
                         try {
@@ -331,18 +318,15 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                                 Date date2 = isoFormat.parse(time2);
                                 return date1.compareTo(date2);
                             } catch (Exception e) {
-                                Log.d(TAG, "Date parsing failed, using string comparison: " + e.getMessage());
                                 return time1.compareTo(time2);
                             }
                         } catch (Exception e) {
-                            Log.e(TAG, "Error sorting messages by date", e);
                             return 0;
                         }
                     });
 
                     messageList.clear();
                     String currentUserId = sessionManager.getCurrentUserId();
-                    Log.d(TAG, "Current user ID for comparison: " + currentUserId);
                     
                     for (MessageResponse msg : messages) {
                         String senderId = "";
@@ -350,35 +334,24 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                             if (msg.getSenderID().getId() != null) {
                                 senderId = msg.getSenderID().getId();
                             }
-                            Log.d(TAG, "Sender info - ID: '" + senderId + "', Username: '" + msg.getSenderID().getUsername() + "', Fullname: '" + msg.getSenderID().getFullname() + "'");
-                        } else {
-                            Log.w(TAG, "SenderID is null for message: " + msg.getText());
                         }
                         
                         boolean isMine = senderId.equals(currentUserId);
-                        Log.d(TAG, "Message: '" + msg.getText() + "' | Sender ID: '" + senderId + "' | Current User ID: '" + currentUserId + "' | IDs equal: " + senderId.equals(currentUserId) + " | Is mine: " + isMine);
 
-                        // Format timestamp from server
                         String formattedTime = formatMessageTime(msg.getCreateAt());
                         MessageItem messageItem = new MessageItem(msg.getText(), isMine, msg.getId(), formattedTime);
                         messageList.add(messageItem);
                         
-                        // Load reactions for each message
                         if (msg.getId() != null) {
                             loadMessageReactions(msg.getId());
                         }
                         
-                        // Emit message delivered for messages that are not mine
                         if (!isMine && msg.getId() != null) {
-                            Log.d(TAG, "📬 EMITTING MESSAGE-DELIVERED for message: " + msg.getId());
                             SocketManager.emitMessageDelivered(msg.getId(), chatId, currentUserId);
                         }
                         
-                        // Mark messages as read when viewing them
                         if (!isMine && msg.getId() != null) {
-                            Log.d(TAG, "📖 EMITTING MESSAGE-READ for message: " + msg.getId());
                             SocketManager.emitMessageRead(msg.getId(), chatId, currentUserId);
-                            Log.d(TAG, "👁️ MARKED MESSAGE AS READ - ID: " + msg.getId());
                         }
                     }
                     
@@ -389,108 +362,64 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         recyclerView.scrollToPosition(messageList.size() - 1);
                     }
                     
-                    Log.d(TAG, "Successfully loaded and sorted " + messageList.size() + " messages");
-                    
-                    // Mark messages as read after loading them
                     markAllMessagesAsRead();
                 } else {
-                    Log.e(TAG, "Failed to fetch messages: " + response.code() + " " + response.message());
                     Toast.makeText(ChatDetailActivity.this, "Failed to load messages", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(retrofit2.Call<List<MessageResponse>> call, Throwable t) {
-                Log.e(TAG, "Error fetching messages: " + t.getMessage(), t);
                 Toast.makeText(ChatDetailActivity.this, "Error loading messages: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void sendMessage(String content) {
-        Log.d(TAG, "Preparing to send message: '" + content + "'");
-        
         if (chatId == null || chatId.isEmpty()) {
-            Log.e(TAG, "Cannot send message: chatId is null or empty");
             Toast.makeText(this, "Error: Chat not loaded", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String userId = sessionManager.getCurrentUserId();
-        Log.d(TAG, "Preparing to send message - Chat ID: " + chatId + ", User ID: " + userId + ", Content: " + content);
 
         SendMessageRequest request = new SendMessageRequest(userId, chatId, content);
-        Log.d(TAG, "SendMessageRequest created: " + request.toString());
 
         ApiService apiService = ApiClient.getService();
         retrofit2.Call<SendMessageResponse> call = apiService.sendMessage(request);
         call.enqueue(new retrofit2.Callback<SendMessageResponse>() {
             @Override
             public void onResponse(retrofit2.Call<SendMessageResponse> call, retrofit2.Response<SendMessageResponse> response) {
-                Log.d(TAG, "Send message response code: " + response.code());
-                Log.d(TAG, "📋 RAW RESPONSE HEADERS: " + response.headers().toString());
-                
-                // Log raw response body if possible
-                try {
-                    if (response.raw() != null && response.raw().request() != null) {
-                        Log.d(TAG, "📋 REQUEST URL: " + response.raw().request().url().toString());
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "📋 Could not log request details");
-                }
-                
                 if (response.isSuccessful() && response.body() != null) {
                     SendMessageResponse messageResponse = response.body();
 
                     String messageId = messageResponse.getId();
-                    Log.d(TAG, "📋 MessageId from getId(): " + messageId);
-
-                    if (messageId == null || messageId.isEmpty()) {
-                        Log.w(TAG, "📋 MessageId is null/empty, checking response for other ID fields");
-                        Log.w(TAG, "📋 This means the server is NOT returning an '_id' field in the response");
-                        Log.w(TAG, "📋 Check your server's message creation endpoint - it should return the created message with _id");
-                    }
-
-                    // Emit socket event for message sent
-                    Log.d(TAG, "📤 About to emit message-sent - MessageId: " + messageId + ", ChatId: " + chatId + ", UserId: " + userId);
-                    Log.d(TAG, "📤 Socket connected: " + (SocketManager.isConnected()));
                     
                     if (messageId != null && !messageId.isEmpty()) {
                         SocketManager.emitMessageSent(messageId, chatId, userId);
-                        Log.d(TAG, "📤 Emitted message-sent event for message: " + messageId);
                         
-                        // Also emit the message for real-time delivery to other users
                         try {
                             String currentUserName = sessionManager.getCurrentUserUsername();
                             SocketManager.emitRealtimeMessage(messageId, content, userId, currentUserName, chatId);
-                            Log.d(TAG, "📡 Emitted real-time message for immediate delivery");
                         } catch (Exception e) {
-                            Log.e(TAG, "Error emitting real-time message", e);
+                            // Ignore error
                         }
                         
-                        // Add message to local list with initial "sent" status
-                        String formattedTime = formatMessageTime(null); // Current time
+                        String formattedTime = formatMessageTime(null);
                         MessageItem newMessage = new MessageItem(content, true, messageId, formattedTime);
-                        newMessage.setStatus("sent"); // Set initial status
+                        newMessage.setStatus("sent");
                         
                         runOnUiThread(() -> {
                             messageList.add(newMessage);
                             messageAdapter.notifyItemInserted(messageList.size() - 1);
                             
-                            // Scroll to bottom
                             RecyclerView recyclerView = findViewById(R.id.message_list);
                             recyclerView.scrollToPosition(messageList.size() - 1);
-                            
-                            Log.d(TAG, "✅ Message added to local list with 'sent' status");
                         });
-                    } else {
-                        Log.e(TAG, "📤 Cannot emit message-sent: messageId is null or empty");
-                        Log.e(TAG, "📤 This means the server response doesn't contain a valid ID field");
                     }
 
                     runOnUiThread(() -> {
                         editMessage.setText("");
-                        Log.d(TAG, "Input field cleared");
                     });
                 } else {
                     String errorBody = "";
@@ -499,17 +428,15 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                             errorBody = response.errorBody().string();
                         }
                     } catch (Exception e) {
-                        Log.e(TAG, "Error reading error body", e);
+                        // Ignore error
                     }
                     
-                    Log.e(TAG, "Failed to send message: " + response.code() + " " + response.message() + ", Error body: " + errorBody);
                     Toast.makeText(ChatDetailActivity.this, "Failed to send message: " + response.message(), Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(retrofit2.Call<SendMessageResponse> call, Throwable t) {
-                Log.e(TAG, "Error sending message: " + t.getMessage(), t);
                 Toast.makeText(ChatDetailActivity.this, "Error sending message: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -542,7 +469,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 SocketManager.emitTypingStart(chatId, currentUserId, currentUserName);
             }
             
-            // Stop typing after 2 seconds of inactivity (reduced for better UX)
             typingHandler.removeCallbacks(typingRunnable);
             typingHandler.postDelayed(typingRunnable, 2000);
         }
@@ -564,47 +490,15 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     // MessageStatusListener implementation
     @Override
     public void onMessageStatusChanged(String messageId, String status) {
-        Log.d(TAG, "📥 RECEIVED STATUS UPDATE - ID: " + messageId + " → " + status.toUpperCase());
-        
-        // Debug: check if this messageId exists in our current message list
-        boolean found = false;
-        for (MessageItem message : messageList) {
-            if (messageId.equals(message.getMessageId())) {
-                found = true;
-                Log.d(TAG, "✅ MESSAGE FOUND IN LIST - Content: '" + 
-                           (message.getContent() != null ? 
-                            message.getContent().substring(0, Math.min(30, message.getContent().length())) : "null") + 
-                           "', Current Status: " + message.getStatus());
-                break;
-            }
-        }
-        
-        if (!found) {
-            Log.w(TAG, "❌ MESSAGE NOT FOUND IN CURRENT LIST - ID: " + messageId);
-            Log.d(TAG, "🔍 Current message list has " + messageList.size() + " messages:");
-            for (int i = 0; i < Math.min(5, messageList.size()); i++) {
-                MessageItem msg = messageList.get(i);
-                Log.d(TAG, "  " + i + ": ID=" + msg.getMessageId() + ", Content='" + 
-                           (msg.getContent() != null ? 
-                            msg.getContent().substring(0, Math.min(20, msg.getContent().length())) : "null") + "'");
-            }
-        }
-        
         runOnUiThread(() -> {
             if (messageAdapter != null) {
                 messageAdapter.updateMessageStatus(messageId, status);
-                Log.d(TAG, "✅ UI UPDATE REQUESTED - Message " + messageId + " status set to " + status);
-            } else {
-                Log.e(TAG, "❌ MESSAGE ADAPTER IS NULL - Cannot update status");
             }
         });
     }
     
     @Override
     public void onUserTyping(String userId, String userName, boolean isTyping) {
-        Log.d(TAG, "👤 USER TYPING STATUS - " + userName + " (" + userId + ") is typing: " + isTyping);
-        
-        // Don't show typing indicator for our own typing
         String currentUserId = sessionManager.getCurrentUserId();
         if (userId.equals(currentUserId)) {
             return;
@@ -616,7 +510,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                     typingIndicator.showTyping(userName);
                     typingIndicatorContainer.setVisibility(View.VISIBLE);
                     
-                    // Auto-scroll to show typing indicator
                     RecyclerView recyclerView = findViewById(R.id.message_list);
                     if (recyclerView != null && messageList.size() > 0) {
                         recyclerView.smoothScrollToPosition(messageList.size() - 1);
@@ -631,66 +524,48 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     
     @Override
     public void onUserPresenceChanged(String userId, boolean isInChat) {
-        Log.d(TAG, "User presence changed: " + userId + " is in chat: " + isInChat);
-        // You can update UI to show user presence if needed
+        // Can update UI to show user presence if needed
     }
     
     @Override
     public void onBulkStatusSync(int syncCount) {
-        Log.d(TAG, "📥 BULK STATUS SYNC - " + syncCount + " messages updated");
         runOnUiThread(() -> {
             if (messageAdapter != null) {
                 messageAdapter.notifyDataSetChanged();
-                Log.d(TAG, "✅ UI REFRESHED after bulk status sync");
             }
         });
     }
     
     @Override
     public void onNewMessageReceived(String messageId, String content, String senderId, String senderName, String chatId, String timestamp) {
-        Log.d(TAG, "📥 NEW MESSAGE RECEIVED - From: " + senderName + ", Content: '" + content + "'");
-        
-        // Only process messages for the current chat
         if (!chatId.equals(this.chatId)) {
-            Log.d(TAG, "⏭️ Message not for current chat - ignoring");
             return;
         }
         
-        // Don't add our own messages (they're already added when sending)
         String currentUserId = sessionManager.getCurrentUserId();
         if (senderId.equals(currentUserId)) {
-            Log.d(TAG, "⏭️ Own message - ignoring");
             return;
         }
         
-        // Check if message already exists in our list
         for (MessageItem existingMessage : messageList) {
             if (messageId.equals(existingMessage.getMessageId())) {
-                Log.d(TAG, "⏭️ Message already exists - ignoring duplicate");
                 return;
             }
         }
         
         runOnUiThread(() -> {
             try {
-                // Format timestamp
                 String formattedTime = formatMessageTime(timestamp);
                 
-                // Create new message item
                 MessageItem newMessage = new MessageItem(content, false, messageId, formattedTime);
                 newMessage.setStatus("delivered");
                 
-                // Add to message list
                 messageList.add(newMessage);
                 messageAdapter.notifyItemInserted(messageList.size() - 1);
                 
-                // Scroll to bottom to show new message
                 RecyclerView recyclerView = findViewById(R.id.message_list);
                 recyclerView.scrollToPosition(messageList.size() - 1);
                 
-                Log.d(TAG, "✅ New message added to UI");
-                
-                // Automatically mark as read since user is viewing the chat
                 if (messageId != null && !messageId.isEmpty()) {
                     SocketManager.emitMessageRead(messageId, this.chatId, currentUserId);
                     newMessage.setStatus("read");
@@ -698,7 +573,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 }
                 
             } catch (Exception e) {
-                Log.e(TAG, "❌ Error adding new message to UI", e);
             }
         });
     }
@@ -707,12 +581,10 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     protected void onDestroy() {
         super.onDestroy();
         
-        // Clean up typing
         if (isTyping) {
             stopTyping();
         }
         
-        // Notify that user left chat
         if (chatId != null) {
             String currentUserId = sessionManager.getCurrentUserId();
             if (currentUserId != null) {
@@ -720,7 +592,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
         }
         
-        // Clean up handlers
         if (typingHandler != null) {
             typingHandler.removeCallbacks(typingRunnable);
         }
@@ -766,43 +637,30 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             return participantId;
         }
         
-        // Fallback: For testing, use a different approach
-        // In a real implementation, you would fetch the chat participants from the server
         Log.w("ChatDetailActivity", "No participantId found, need to fetch from server or set properly in ChatItem");
         
-        // TODO: You need to either:
-        // 1. Update your chat list API to include participant IDs
-        // 2. Make an API call here to get chat participants
-        // 3. For testing, manually replace this with a real user ID from your database
-        
-        // For now, return null to indicate the issue needs to be fixed
         return null;
     }
     
     private String formatMessageTime(String timestamp) {
         if (timestamp == null || timestamp.isEmpty()) {
-            // Return current time if no timestamp
             SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
             return timeFormat.format(new Date());
         }
         
         try {
-            // Parse ISO format from server: "2023-12-07T15:30:00.000Z"
             SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
             Date date = isoFormat.parse(timestamp);
             
-            // Format to readable time: "3:30 PM"
             SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
             return timeFormat.format(date);
         } catch (Exception e) {
             Log.e(TAG, "Error parsing timestamp: " + timestamp, e);
-            // Return current time as fallback
             SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
             return timeFormat.format(new Date());
         }
     }
     
-    // Add call listener implementation
     private void setupCallListeners() {
         SocketManager.setupCallListeners(new SocketManager.CallListener() {
             @Override
@@ -810,7 +668,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 runOnUiThread(() -> {
                     Log.d(TAG, "📲 Incoming call from: " + callerName + " while in chat");
                     
-                    // Start IncomingCallActivity
                     Intent incomingCallIntent = new Intent(ChatDetailActivity.this, IncomingCallActivity.class);
                     incomingCallIntent.putExtra("callId", callId);
                     incomingCallIntent.putExtra("chatId", chatId);
@@ -825,17 +682,14 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
             @Override
             public void onCallAnswered(String callId, long timestamp) {
-                // Handle call answered
             }
 
             @Override
             public void onCallDeclined(String callId, long timestamp) {
-                // Handle call declined
             }
 
             @Override
             public void onCallEnded(String callId, long timestamp) {
-                // Handle call ended
             }
 
             @Override
@@ -847,17 +701,14 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
             @Override
             public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
-                // Handle mute status
             }
 
             @Override
             public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
-                // Handle video status
             }
         });
     }
     
-    // 🎭 REACTION HANDLING METHODS
     private void handleReactionSelection(String messageId, String emoji, boolean isAdding) {
         try {
             String currentUserId = sessionManager.getCurrentUserId();
@@ -892,13 +743,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                     Map<String, ReactionSummary> summaries = message.getReactionSummaries();
                     if (summaries != null) {
                         ReactionSummary summary = summaries.get(emoji);
-                        return summary != null && summary.isCurrentUserReacted();
+                        return summary != null && summary.isCurrentUserReacted();                        }
                     }
                 }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {
-            // Ignore errors
-        }
         return false;
     }
     
@@ -993,11 +842,9 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         }
                     }
                 } catch (Exception e) {
-                    // Ignore UI update errors
                 }
             });
         } catch (Exception e) {
-            // Ignore errors
         }
     }
     
@@ -1017,7 +864,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
             @Override
             public void onError(Throwable error) {
-                // Ignore error - reactions just won't load
             }
         });
     }
