@@ -340,6 +340,39 @@ public class SocketManager {
                 }
             });
             
+            // Listen for real-time reactions
+            socket.on("reaction-added", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String messageId = data.getString("messageId");
+                    String userId = data.getString("userId");
+                    String userName = data.getString("userName");
+                    String emoji = data.getString("emoji");
+                    
+                    Log.d(TAG, "😊 RECEIVED reaction-added - Message: " + messageId + ", User: " + userName + ", Emoji: " + emoji);
+                    
+                    listener.onReactionAdded(messageId, userId, userName, emoji);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing reaction-added", e);
+                }
+            });
+
+            socket.on("reaction-removed", args -> {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String messageId = data.getString("messageId");
+                    String userId = data.getString("userId");
+                    String userName = data.getString("userName");
+                    String emoji = data.getString("emoji");
+                    
+                    Log.d(TAG, "😔 RECEIVED reaction-removed - Message: " + messageId + ", User: " + userName + ", Emoji: " + emoji);
+                    
+                    listener.onReactionRemoved(messageId, userId, userName, emoji);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing reaction-removed", e);
+                }
+            });
+            
             Log.d(TAG, "✅ Socket event listeners setup complete");
         }
     }
@@ -377,6 +410,8 @@ public class SocketManager {
         void onUserPresenceChanged(String userId, boolean isInChat);
         void onBulkStatusSync(int syncCount);
         void onNewMessageReceived(String messageId, String content, String senderId, String senderName, String chatId, String timestamp);
+        void onReactionAdded(String messageId, String userId, String userName, String emoji);
+        void onReactionRemoved(String messageId, String userId, String userName, String emoji);
     }
     
     // Interface for handling chat list updates
@@ -611,5 +646,42 @@ public class SocketManager {
         void onCallFailed(String callId, String reason);
         void onCallMuteStatus(String callId, String userId, boolean isMuted);
         void onCallVideoStatus(String callId, String userId, boolean isVideoOn);
+    }
+
+    // Reaction Methods
+    public static void emitReactionAdded(String messageId, String chatId, String userId, String userName, String emoji) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("messageId", messageId);
+                data.put("chatId", chatId);
+                data.put("userId", userId);
+                data.put("userName", userName);
+                data.put("emoji", emoji);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("reaction-added", data);
+                Log.d(TAG, "😊 EMITTED reaction-added - Message: " + messageId + ", User: " + userName + ", Emoji: " + emoji);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting reaction-added", e);
+            }
+        }
+    }
+    
+    public static void emitReactionRemoved(String messageId, String chatId, String userId, String userName, String emoji) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("messageId", messageId);
+                data.put("chatId", chatId);
+                data.put("userId", userId);
+                data.put("userName", userName);
+                data.put("emoji", emoji);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("reaction-removed", data);
+                Log.d(TAG, "😔 EMITTED reaction-removed - Message: " + messageId + ", User: " + userName + ", Emoji: " + emoji);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting reaction-removed", e);
+            }
+        }
     }
 }
