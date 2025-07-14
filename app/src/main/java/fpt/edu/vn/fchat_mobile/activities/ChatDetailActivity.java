@@ -83,7 +83,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     private boolean isTyping = false;
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
-    
+
     // Reaction callback implementation
     private final ReactionManager.ReactionCallback reactionCallback = new ReactionManager.ReactionCallback() {
         @Override
@@ -114,15 +114,13 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         sessionManager = new SessionManager(this);
         reactionRepository = new ReactionRepository();
-        
-        // Check if user is logged in
+
         if (!sessionManager.hasValidSession()) {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
-        
-        // Debug session info
+
         String currentUserId = sessionManager.getCurrentUserId();
         String currentUserName = sessionManager.getCurrentUserUsername();
 
@@ -135,8 +133,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         btnCamera = findViewById(R.id.btn_camera);
         btnCall = findViewById(R.id.btn_call);
         btnVideo = findViewById(R.id.btn_video);
-        
-        // Initialize typing indicator
+
         typingIndicator = findViewById(R.id.typing_indicator);
         typingIndicatorContainer = findViewById(R.id.typing_indicator_container);
 
@@ -155,29 +152,23 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 .placeholder(R.drawable.ic_avatar)
                 .into(avatarView);
 
-        // Initialize socket and setup listeners
         SocketManager.initializeSocket();
         SocketManager.setupMessageStatusListeners(this);
-        
-        // Setup call listeners for incoming calls
+
         setupCallListeners();
 
-        // Join the chat room for real-time updates
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
         }
-        
-        // Register user for online status
+
         if (currentUserId != null) {
             SocketManager.registerUser(currentUserId);
         }
-        
-        // Notify that user entered chat
+
         if (chatId != null && currentUserId != null) {
             SocketManager.emitUserEnteredChat(chatId, currentUserId);
         }
-        
-        // Request status sync for this chat when entering
+
         if (chatId != null && currentUserId != null) {
             SocketManager.requestChatStatusSync(chatId, currentUserId);
         }
@@ -215,8 +206,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 }
             }
         });
-        
-        // Add typing indicator for text input
+
         editMessage.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -242,7 +232,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
         });
 
-        // Call button listeners
         btnCall.setOnClickListener(v -> startVoiceCall());
         btnVideo.setOnClickListener(v -> startVideoCall());
 
@@ -358,23 +347,19 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         boolean isMine = senderId.equals(currentUserId);
                         Log.d(TAG, "Message: '" + msg.getText() + "' | Sender ID: '" + senderId + "' | Current User ID: '" + currentUserId + "' | IDs equal: " + senderId.equals(currentUserId) + " | Is mine: " + isMine);
 
-                        // Format timestamp from server
                         String formattedTime = formatMessageTime(msg.getCreateAt());
                         MessageItem messageItem = new MessageItem(msg.getText(), isMine, msg.getId(), formattedTime);
                         messageList.add(messageItem);
-                        
-                        // Load reactions for each message
+
                         if (msg.getId() != null) {
                             loadMessageReactions(msg.getId());
                         }
-                        
-                        // Emit message delivered for messages that are not mine
+
                         if (!isMine && msg.getId() != null) {
                             Log.d(TAG, "📬 EMITTING MESSAGE-DELIVERED for message: " + msg.getId());
                             SocketManager.emitMessageDelivered(msg.getId(), chatId, currentUserId);
                         }
-                        
-                        // Mark messages as read when viewing them
+
                         if (!isMine && msg.getId() != null) {
                             Log.d(TAG, "📖 EMITTING MESSAGE-READ for message: " + msg.getId());
                             SocketManager.emitMessageRead(msg.getId(), chatId, currentUserId);
@@ -390,8 +375,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                     }
                     
                     Log.d(TAG, "Successfully loaded and sorted " + messageList.size() + " messages");
-                    
-                    // Mark messages as read after loading them
+
                     markAllMessagesAsRead();
                 } else {
                     Log.e(TAG, "Failed to fetch messages: " + response.code() + " " + response.message());

@@ -22,6 +22,7 @@ import fpt.edu.vn.fchat_mobile.responses.ChatResponse;
 import fpt.edu.vn.fchat_mobile.responses.MessageResponse;
 import fpt.edu.vn.fchat_mobile.responses.SendMessageResponse;
 
+import fpt.edu.vn.fchat_mobile.responses.UpdateUserResponse;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.http.Body;
@@ -55,6 +56,20 @@ public interface ApiService {
             @Part("currentStatus") RequestBody currentStatus,
             @Part("fcmToken") RequestBody fcmToken
     );
+
+    @Multipart
+    @PUT("api/accounts/{id}")
+    Call<UpdateUserResponse> updateUser(
+            @Path("id") String id,
+            @Part MultipartBody.Part file,
+            @Part("fullname") RequestBody fullname,
+            @Part("username") RequestBody username,
+            @Part("gender") RequestBody gender,
+            @Part("phoneNumber") RequestBody phone,
+            @Part("email") RequestBody email
+    );
+
+
 
     @FormUrlEncoded
     @POST("api/forgot-password")
@@ -132,5 +147,6 @@ public interface ApiService {
 
     @GET("api/messages/{messageId}/reactions")
     Call<List<MessageReaction>> getMessageReactions(@Path("messageId") String messageId);
+
 
 }

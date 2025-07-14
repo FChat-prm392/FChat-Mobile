@@ -5,6 +5,7 @@ import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
+import fpt.edu.vn.fchat_mobile.responses.UpdateUserResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
@@ -50,4 +51,5 @@ public class AuthRepository {
         );
         call.enqueue(callback);
     }
+
 }
