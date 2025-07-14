@@ -17,7 +17,6 @@ public class MessageReaction {
         this.emoji = emoji;
     }
 
-    // Getters and setters
     public String getId() {
         return id;
     }

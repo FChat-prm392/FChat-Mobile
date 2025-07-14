@@ -41,7 +41,6 @@ public class ReactionManager {
             true
         );
         
-        // Set up click listeners for each emoji
         setupEmojiClickListener(popupView, R.id.emoji_like, "👍", messageId, callback, popupWindow);
         setupEmojiClickListener(popupView, R.id.emoji_love, "❤️", messageId, callback, popupWindow);
         setupEmojiClickListener(popupView, R.id.emoji_laugh, "😂", messageId, callback, popupWindow);
@@ -49,7 +48,6 @@ public class ReactionManager {
         setupEmojiClickListener(popupView, R.id.emoji_sad, "😢", messageId, callback, popupWindow);
         setupEmojiClickListener(popupView, R.id.emoji_angry, "😡", messageId, callback, popupWindow);
         
-        // Show popup above the message
         popupWindow.setElevation(8);
         popupWindow.showAsDropDown(anchorView, 0, -anchorView.getHeight() - 200, Gravity.START);
     }
@@ -59,7 +57,6 @@ public class ReactionManager {
                                               PopupWindow popupWindow) {
         TextView emojiView = popupView.findViewById(viewId);
         emojiView.setOnClickListener(v -> {
-            // Pass false for isAdding since we now handle toggle logic in the activity
             callback.onReactionSelected(messageId, emoji, false);
             popupWindow.dismiss();
         });
@@ -114,7 +111,6 @@ public class ReactionManager {
             }
         });
         
-        // Handle long click to show who reacted
         reactionView.setOnLongClickListener(v -> {
             callback.onReactionClicked(messageId, summary.getEmoji(), summary.getUserNames());
             return true;

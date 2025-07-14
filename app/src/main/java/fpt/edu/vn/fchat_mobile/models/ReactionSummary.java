@@ -17,7 +17,6 @@ public class ReactionSummary {
         this.currentUserReacted = currentUserReacted;
     }
 
-    // Getters and setters
     public String getEmoji() {
         return emoji;
     }

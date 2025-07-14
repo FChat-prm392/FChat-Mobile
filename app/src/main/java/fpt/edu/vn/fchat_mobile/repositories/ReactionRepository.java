@@ -69,7 +69,6 @@ public class ReactionRepository {
                                     }
                                 }
                             } catch (Exception e) {
-                                // Ignore error reading error body
                             }
                             callback.onError(new Exception(errorMessage));
                         }
