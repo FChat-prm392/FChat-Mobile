@@ -263,7 +263,10 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
             
             @Override
             public void onVoiceDataReceived(String audioData, String senderId) {
-                // Voice data not handled in chat list
+            }
+            
+            @Override
+            public void onVideoDataReceived(String videoData, String senderId) {
             }
         });
     }

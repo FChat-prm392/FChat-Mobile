@@ -385,4 +385,8 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     @Override
     public void onVoiceDataReceived(String audioData, String senderId) {
     }
+    
+    @Override
+    public void onVideoDataReceived(String videoData, String senderId) {
+    }
 }

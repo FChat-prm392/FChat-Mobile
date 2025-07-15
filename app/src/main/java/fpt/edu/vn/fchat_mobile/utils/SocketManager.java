@@ -647,6 +647,7 @@ public class SocketManager {
         void onCallMuteStatus(String callId, String userId, boolean isMuted);
         void onCallVideoStatus(String callId, String userId, boolean isVideoOn);
         void onVoiceDataReceived(String audioData, String senderId);
+        void onVideoDataReceived(String videoData, String senderId);
     }
     
     // Voice streaming methods
@@ -667,6 +668,24 @@ public class SocketManager {
         }
     }
     
+    public static void emitVideoData(String videoData, String chatId, String userId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("videoData", videoData);
+                data.put("chatId", chatId);
+                data.put("userId", userId);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("video-data", data);
+                Log.d(TAG, "Emitted video data - Chat: " + chatId + ", User: " + userId + ", Size: " + videoData.length());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting video data", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot emit video data - socket not connected");
+        }
+    }
+    
     public static void setupVoiceListeners(CallListener listener) {
         if (socket == null || listener == null) return;
         
@@ -676,10 +695,21 @@ public class SocketManager {
                 String audioData = data.getString("audioData");
                 String senderId = data.getString("userId");
                 
-                Log.d(TAG, "🎵 RECEIVED voice-data from user: " + senderId);
                 listener.onVoiceDataReceived(audioData, senderId);
             } catch (Exception e) {
                 Log.e(TAG, "Error processing voice data", e);
+            }
+        });
+        
+        socket.on("video-data", args -> {
+            try {
+                JSONObject data = (JSONObject) args[0];
+                String videoData = data.getString("videoData");
+                String senderId = data.getString("userId");
+                
+                listener.onVideoDataReceived(videoData, senderId);
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing video data", e);
             }
         });
     }

@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.view.SurfaceView;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
@@ -32,12 +33,15 @@ import fpt.edu.vn.fchat_mobile.utils.AudioUtils;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
 import fpt.edu.vn.fchat_mobile.utils.VoiceStreamer;
+import fpt.edu.vn.fchat_mobile.utils.VideoStreamer;
+import fpt.edu.vn.fchat_mobile.utils.VideoRenderer;
 
-public class CallActivity extends AppCompatActivity implements SocketManager.CallListener, AudioUtils.VoiceActivityListener, VoiceStreamer.VoiceStreamListener {
+public class CallActivity extends AppCompatActivity implements SocketManager.CallListener, AudioUtils.VoiceActivityListener, VoiceStreamer.VoiceStreamListener, VideoStreamer.VideoStreamListener {
 
-    private ImageView avatarView, btnEndCall, btnMute, btnSpeaker, btnVideo;
-    private TextView nameText, statusText, callDurationText;
+    private ImageView avatarView, btnEndCall, btnMute, btnSpeaker, btnVideo, btnSwitchCamera, remoteVideoView;
+    private TextView nameText, statusText, callDurationText, cameraStatusText;
     private View videoContainer, speakingIndicator;
+    private SurfaceView localCameraPreview;
     
     private String chatId;
     private String participantName;
@@ -56,8 +60,11 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     private long callStartTime;
     private SessionManager sessionManager;
     private VoiceStreamer voiceStreamer;
+    private VideoStreamer videoStreamer;
+    private VideoRenderer videoRenderer;
     
     private static final int AUDIO_PERMISSION_REQUEST_CODE = 200;
+    private static final int CAMERA_PERMISSION_REQUEST_CODE = 201;
     
     private final Runnable updateDurationRunnable = new Runnable() {
         @Override
@@ -93,7 +100,6 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         
         checkAudioPermissions();
         
-        // Get intent data first
         Intent intent = getIntent();
         chatId = intent.getStringExtra("chatId");
         participantName = intent.getStringExtra("participantName");
@@ -104,11 +110,20 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         boolean startMuted = intent.getBooleanExtra("startMuted", false);
         boolean isCallAnswered = intent.getBooleanExtra("isCallAnswered", false);
         
+        if (isVideoCall) {
+            checkCameraPermissions();
+        }
+        
         // Initialize voice streamer AFTER getting chatId
         String currentUserId = sessionManager.getCurrentUserId();
         if (chatId != null && currentUserId != null) {
             voiceStreamer = new VoiceStreamer(chatId, currentUserId);
             voiceStreamer.setStreamListener(this);
+            
+            if (isVideoCall) {
+                videoStreamer = new VideoStreamer(this, chatId, currentUserId);
+                videoStreamer.setStreamListener(this);
+            }
         }
         
         // Set initial muted state if specified
@@ -139,6 +154,14 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         }
     }
     
+    private void checkCameraPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, 
+                new String[]{Manifest.permission.CAMERA}, 
+                CAMERA_PERMISSION_REQUEST_CODE);
+        }
+    }
+    
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -147,6 +170,12 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
                 setupAudioManager();
             } else {
                 Toast.makeText(this, "Audio permission required for voice calls", Toast.LENGTH_LONG).show();
+                finish();
+            }
+        } else if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            } else {
+                Toast.makeText(this, "Camera permission is required for video calls", Toast.LENGTH_LONG).show();
                 finish();
             }
         }
@@ -168,8 +197,24 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         btnMute = findViewById(R.id.btn_mute);
         btnSpeaker = findViewById(R.id.btn_speaker);
         btnVideo = findViewById(R.id.btn_video);
+        btnSwitchCamera = findViewById(R.id.btn_switch_camera);
         videoContainer = findViewById(R.id.video_container);
         speakingIndicator = findViewById(R.id.speaking_indicator);
+        
+        // Initialize video views for video calls
+        if (isVideoCall) {
+            remoteVideoView = findViewById(R.id.remote_video_view);
+            localCameraPreview = findViewById(R.id.local_camera_preview);
+            cameraStatusText = findViewById(R.id.camera_status_text);
+            
+            if (remoteVideoView != null) {
+                videoRenderer = new VideoRenderer(remoteVideoView);
+            }
+            
+            if (localCameraPreview != null && videoStreamer != null) {
+                videoStreamer.setSurfaceView(localCameraPreview);
+            }
+        }
     }
     
     private void setupCallUI() {
@@ -184,10 +229,12 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         // Setup UI based on call type
         if (isVideoCall) {
             btnVideo.setVisibility(View.VISIBLE);
+            btnSwitchCamera.setVisibility(View.VISIBLE);
             videoContainer.setVisibility(View.VISIBLE);
             avatarView.setVisibility(View.GONE);
         } else {
             btnVideo.setVisibility(View.GONE);
+            btnSwitchCamera.setVisibility(View.GONE);
             videoContainer.setVisibility(View.GONE);
             avatarView.setVisibility(View.VISIBLE);
         }
@@ -213,6 +260,8 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         btnSpeaker.setOnClickListener(v -> toggleSpeaker());
         
         btnVideo.setOnClickListener(v -> toggleVideo());
+        
+        btnSwitchCamera.setOnClickListener(v -> switchCamera());
     }
     
     private void setupCallListeners() {
@@ -224,12 +273,24 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         // Show incoming call UI
         statusText.setText("Incoming " + (isVideoCall ? "video" : "voice") + " call...");
         
+        // Join the socket room for real-time communication
+        if (chatId != null) {
+            SocketManager.joinRoom(chatId);
+            Log.d("CallActivity", "Joined socket room for incoming call: " + chatId);
+        }
+        
         // Wait for user to manually answer the call
         // No auto-answer - user must use IncomingCallActivity to accept
     }
     
     private void initiateCall() {
         statusText.setText("Calling...");
+        
+        // Join the socket room for real-time communication
+        if (chatId != null) {
+            SocketManager.joinRoom(chatId);
+            Log.d("CallActivity", "Joined socket room for call initiation: " + chatId);
+        }
         
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
@@ -261,9 +322,19 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         
         setupAudioManager();
         
+        // Join the socket room for real-time communication
+        if (chatId != null) {
+            SocketManager.joinRoom(chatId);
+            Log.d("CallActivity", "Joined socket room: " + chatId);
+        }
+        
         // Start voice streaming
         if (voiceStreamer != null) {
             voiceStreamer.startStreaming();
+        }
+        
+        if (isVideoCall && videoStreamer != null) {
+            videoStreamer.startStreaming();
         }
         
         callDurationHandler.postDelayed(updateDurationRunnable, 1000);
@@ -282,6 +353,10 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         // Stop voice streaming
         if (voiceStreamer != null) {
             voiceStreamer.stopStreaming();
+        }
+        
+        if (videoStreamer != null) {
+            videoStreamer.releaseCamera();
         }
         
         if (ringtone != null && ringtone.isPlaying()) {
@@ -345,11 +420,27 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         btnVideo.setColorFilter(isVideoOn ? getColor(R.color.blue) : getColor(R.color.red));
         
         if (isVideoOn) {
-            videoContainer.setVisibility(View.VISIBLE);
+            if (remoteVideoView != null) {
+                remoteVideoView.setVisibility(View.VISIBLE);
+            }
+            if (localCameraPreview != null) {
+                localCameraPreview.setVisibility(View.VISIBLE);
+            }
             avatarView.setVisibility(View.GONE);
+            if (videoStreamer != null && videoStreamer.isCameraReady()) {
+                videoStreamer.startStreaming();
+            }
         } else {
-            videoContainer.setVisibility(View.GONE);
+            if (remoteVideoView != null) {
+                remoteVideoView.setVisibility(View.GONE);
+            }
+            if (localCameraPreview != null) {
+                localCameraPreview.setVisibility(View.GONE);
+            }
             avatarView.setVisibility(View.VISIBLE);
+            if (videoStreamer != null) {
+                videoStreamer.stopStreaming();
+            }
         }
         
         String callId = chatId + "_" + System.currentTimeMillis();
@@ -357,6 +448,13 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         SocketManager.emitCallVideoToggle(callId, currentUserId, participantId, isVideoOn);
         
         Toast.makeText(this, isVideoOn ? "Video on" : "Video off", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void switchCamera() {
+        if (!isVideoCall || videoStreamer == null) return;
+        
+        videoStreamer.switchCamera();
+        Toast.makeText(this, "Switching camera...", Toast.LENGTH_SHORT).show();
     }
     
     private Object createCallData() {
@@ -379,6 +477,9 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         }
         if (audioManager != null) {
             AudioUtils.cleanupAfterCall(this);
+        }
+        if (videoStreamer != null) {
+            videoStreamer.releaseCamera();
         }
     }
     
@@ -473,5 +574,50 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         if (!senderId.equals(currentUserId) && voiceStreamer != null) {
             voiceStreamer.playReceivedAudio(audioData);
         }
+    }
+    
+    @Override
+    public void onVideoDataReceived(String videoData, String senderId) {
+        Log.d("CallActivity", "Video data received from: " + senderId + ", Size: " + videoData.length());
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (!senderId.equals(currentUserId) && videoRenderer != null) {
+            Log.d("CallActivity", "Rendering video frame from different user");
+            videoRenderer.renderFrame(videoData);
+        } else {
+            Log.d("CallActivity", "Ignoring own video data or renderer is null");
+        }
+    }
+    
+    @Override
+    public void onVideoDataReady(String videoData, String chatId, String userId) {
+        Log.d("CallActivity", "Video data ready - Chat: " + chatId + ", User: " + userId + ", Size: " + videoData.length());
+        SocketManager.emitVideoData(videoData, chatId, userId);
+    }
+    
+    @Override
+    public void onCameraReady() {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "Camera is ready");
+            if (cameraStatusText != null) {
+                cameraStatusText.setVisibility(View.GONE);
+            }
+            // Auto-start video streaming if call is connected and video is on
+            if (isCallConnected && isVideoOn && videoStreamer != null) {
+                Log.d("CallActivity", "Auto-starting video streaming since call is connected");
+                videoStreamer.startStreaming();
+            }
+        });
+    }
+    
+    @Override
+    public void onCameraError(String error) {
+        runOnUiThread(() -> {
+            Log.e("CallActivity", "Camera error: " + error);
+            if (cameraStatusText != null) {
+                cameraStatusText.setText("Camera Error");
+                cameraStatusText.setVisibility(View.VISIBLE);
+            }
+            Toast.makeText(this, "Camera error: " + error, Toast.LENGTH_LONG).show();
+        });
     }
 }
