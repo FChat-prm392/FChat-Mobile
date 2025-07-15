@@ -4,8 +4,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
@@ -68,11 +66,10 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     private MessageAdapter messageAdapter;
     private ReactionRepository reactionRepository;
     private String chatId;
-    private String participantId; // Store the other participant's ID
+    private String participantId;
     private SessionManager sessionManager;
     private static final String TAG = "ChatDetailActivity";
 
-    // Typing functionality
     private Handler typingHandler = new Handler();
     private Runnable typingRunnable = new Runnable() {
         @Override
@@ -114,7 +111,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         sessionManager = new SessionManager(this);
         reactionRepository = new ReactionRepository();
-
         if (!sessionManager.hasValidSession()) {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
@@ -132,7 +128,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         btnCamera = findViewById(R.id.btn_camera);
         btnCall = findViewById(R.id.btn_call);
         btnVideo = findViewById(R.id.btn_video);
-
         typingIndicator = findViewById(R.id.typing_indicator);
         typingIndicatorContainer = findViewById(R.id.typing_indicator_container);
 
@@ -192,19 +187,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
         });
         
-        btnSend.setOnClickListener(v -> {
-            String content = editMessage.getText().toString().trim();
-            
-            if (!content.isEmpty()) {
-                sendMessage(content);
-                editMessage.setText("");
-                
-                if (isTyping) {
-                    stopTyping();
-                }
-            }
-        });
-
         editMessage.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -292,10 +274,10 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         }
 
         ApiService apiService = ApiClient.getService();
-        retrofit2.Call<List<MessageResponse>> call = apiService.getMessagesByChatId(chatId, 100);
-        call.enqueue(new retrofit2.Callback<List<MessageResponse>>() {
+        Call<List<MessageResponse>> call = apiService.getMessagesByChatId(chatId, 100);
+        call.enqueue(new Callback<List<MessageResponse>>() {
             @Override
-            public void onResponse(retrofit2.Call<List<MessageResponse>> call, retrofit2.Response<List<MessageResponse>> response) {
+            public void onResponse(Call<List<MessageResponse>> call, Response<List<MessageResponse>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     List<MessageResponse> messages = response.body();
 
@@ -368,7 +350,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
 
             @Override
-            public void onFailure(retrofit2.Call<List<MessageResponse>> call, Throwable t) {
+            public void onFailure(Call<List<MessageResponse>> call, Throwable t) {
                 Toast.makeText(ChatDetailActivity.this, "Error loading messages: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -385,10 +367,10 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         SendMessageRequest request = new SendMessageRequest(userId, chatId, content);
 
         ApiService apiService = ApiClient.getService();
-        retrofit2.Call<SendMessageResponse> call = apiService.sendMessage(request);
-        call.enqueue(new retrofit2.Callback<SendMessageResponse>() {
+        Call<SendMessageResponse> call = apiService.sendMessage(request);
+        call.enqueue(new Callback<SendMessageResponse>() {
             @Override
-            public void onResponse(retrofit2.Call<SendMessageResponse> call, retrofit2.Response<SendMessageResponse> response) {
+            public void onResponse(Call<SendMessageResponse> call, Response<SendMessageResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     SendMessageResponse messageResponse = response.body();
 
@@ -401,7 +383,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                             String currentUserName = sessionManager.getCurrentUserUsername();
                             SocketManager.emitRealtimeMessage(messageId, content, userId, currentUserName, chatId);
                         } catch (Exception e) {
-                            // Ignore error
                         }
                         
                         String formattedTime = formatMessageTime(null);
@@ -427,7 +408,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                             errorBody = response.errorBody().string();
                         }
                     } catch (Exception e) {
-                        // Ignore error
+                        Log.e(TAG, "Error reading error body", e);
                     }
                     
                     Toast.makeText(ChatDetailActivity.this, "Failed to send message: " + response.message(), Toast.LENGTH_SHORT).show();
@@ -435,7 +416,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             }
 
             @Override
-            public void onFailure(retrofit2.Call<SendMessageResponse> call, Throwable t) {
+            public void onFailure(Call<SendMessageResponse> call, Throwable t) {
                 Toast.makeText(ChatDetailActivity.this, "Error sending message: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -458,7 +439,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         }
     }
     
-    // Typing indicator methods
     private void startTyping() {
         if (!isTyping && chatId != null) {
             isTyping = true;
@@ -486,7 +466,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         }
     }
     
-    // MessageStatusListener implementation
     @Override
     public void onMessageStatusChanged(String messageId, String status) {
         runOnUiThread(() -> {
@@ -523,7 +502,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     
     @Override
     public void onUserPresenceChanged(String userId, boolean isInChat) {
-        // Can update UI to show user presence if needed
     }
     
     @Override
@@ -631,12 +609,9 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     }
     
     private String getOtherParticipantId() {
-        // Return the actual participant ID passed from the chat list
         if (participantId != null && !participantId.isEmpty()) {
             return participantId;
         }
-        
-        Log.w("ChatDetailActivity", "No participantId found, need to fetch from server or set properly in ChatItem");
         
         return null;
     }
@@ -654,7 +629,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
             return timeFormat.format(date);
         } catch (Exception e) {
-            Log.e(TAG, "Error parsing timestamp: " + timestamp, e);
             SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
             return timeFormat.format(new Date());
         }
@@ -665,7 +639,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             @Override
             public void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp) {
                 runOnUiThread(() -> {
-                    Log.d(TAG, "📲 Incoming call from: " + callerName + " while in chat");
                     
                     Intent incomingCallIntent = new Intent(ChatDetailActivity.this, IncomingCallActivity.class);
                     incomingCallIntent.putExtra("callId", callId);
@@ -746,6 +719,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                     }
                 }
             } catch (Exception e) {
+                Log.e(TAG, "Error checking user reaction", e);
             }
         return false;
     }
@@ -769,6 +743,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                     }
                     
                     updateMessageReactionLocally(messageId, reaction, true);
+                    
+                    String currentUserName = sessionManager.getCurrentUserUsername();
+                    if (currentUserName != null && chatId != null) {
+                        SocketManager.emitReactionAdded(messageId, chatId, userId, currentUserName, emoji);
+                    }
                 }
 
                 @Override
@@ -800,6 +779,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                 @Override
                 public void onSuccess() {
                     updateMessageReactionLocally(messageId, null, false, userId, emoji);
+                    
+                    String currentUserName = sessionManager.getCurrentUserUsername();
+                    if (currentUserName != null && chatId != null) {
+                        SocketManager.emitReactionRemoved(messageId, chatId, userId, currentUserName, emoji);
+                    }
                 }
 
                 @Override
@@ -841,9 +825,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         }
                     }
                 } catch (Exception e) {
+                    Log.e(TAG, "Error updating reaction locally", e);
                 }
             });
         } catch (Exception e) {
+            Log.e(TAG, "Error in updateMessageReactionLocally", e);
         }
     }
     
@@ -863,6 +849,45 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
             @Override
             public void onError(Throwable error) {
+                Log.e(TAG, "Error loading reactions", error);
+            }
+        });
+    }
+
+    @Override
+    public void onReactionAdded(String messageId, String userId, String userName, String emoji) {
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (userId.equals(currentUserId)) {
+            return;
+        }
+        
+        runOnUiThread(() -> {
+            try {
+                MessageReaction reaction = new MessageReaction();
+                reaction.setMessageId(messageId);
+                reaction.setUserId(userId);
+                reaction.setUserName(userName);
+                reaction.setEmoji(emoji);
+                
+                updateMessageReactionLocally(messageId, reaction, true);
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing incoming reaction", e);
+            }
+        });
+    }
+    
+    @Override
+    public void onReactionRemoved(String messageId, String userId, String userName, String emoji) {
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (userId.equals(currentUserId)) {
+            return;
+        }
+        
+        runOnUiThread(() -> {
+            try {
+                updateMessageReactionLocally(messageId, null, false, userId, emoji);
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing reaction removal", e);
             }
         });
     }
