@@ -646,6 +646,42 @@ public class SocketManager {
         void onCallFailed(String callId, String reason);
         void onCallMuteStatus(String callId, String userId, boolean isMuted);
         void onCallVideoStatus(String callId, String userId, boolean isVideoOn);
+        void onVoiceDataReceived(String audioData, String senderId);
+    }
+    
+    // Voice streaming methods
+    public static void emitVoiceData(String audioData, String chatId, String userId) {
+        if (socket != null && socket.connected()) {
+            try {
+                JSONObject data = new JSONObject();
+                data.put("audioData", audioData);
+                data.put("chatId", chatId);
+                data.put("userId", userId);
+                data.put("timestamp", System.currentTimeMillis());
+                socket.emit("voice-data", data);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error emitting voice data", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot emit voice data - socket not connected");
+        }
+    }
+    
+    public static void setupVoiceListeners(CallListener listener) {
+        if (socket == null || listener == null) return;
+        
+        socket.on("voice-data", args -> {
+            try {
+                JSONObject data = (JSONObject) args[0];
+                String audioData = data.getString("audioData");
+                String senderId = data.getString("userId");
+                
+                Log.d(TAG, "🎵 RECEIVED voice-data from user: " + senderId);
+                listener.onVoiceDataReceived(audioData, senderId);
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing voice data", e);
+            }
+        });
     }
 
     // Reaction Methods

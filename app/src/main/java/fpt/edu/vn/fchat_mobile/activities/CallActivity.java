@@ -1,16 +1,25 @@
 package fpt.edu.vn.fchat_mobile.activities;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 
@@ -19,14 +28,16 @@ import java.util.Date;
 import java.util.Locale;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.utils.AudioUtils;
 import fpt.edu.vn.fchat_mobile.utils.SessionManager;
 import fpt.edu.vn.fchat_mobile.utils.SocketManager;
+import fpt.edu.vn.fchat_mobile.utils.VoiceStreamer;
 
-public class CallActivity extends AppCompatActivity implements SocketManager.CallListener {
+public class CallActivity extends AppCompatActivity implements SocketManager.CallListener, AudioUtils.VoiceActivityListener, VoiceStreamer.VoiceStreamListener {
 
     private ImageView avatarView, btnEndCall, btnMute, btnSpeaker, btnVideo;
     private TextView nameText, statusText, callDurationText;
-    private View videoContainer;
+    private View videoContainer, speakingIndicator;
     
     private String chatId;
     private String participantName;
@@ -39,10 +50,14 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     private boolean isSpeakerOn = false;
     private boolean isVideoOn = true;
     
+    private AudioManager audioManager;
     private MediaPlayer ringtone;
     private Handler callDurationHandler = new Handler();
     private long callStartTime;
     private SessionManager sessionManager;
+    private VoiceStreamer voiceStreamer;
+    
+    private static final int AUDIO_PERMISSION_REQUEST_CODE = 200;
     
     private final Runnable updateDurationRunnable = new Runnable() {
         @Override
@@ -71,8 +86,14 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         setContentView(R.layout.activity_call);
         
         sessionManager = new SessionManager(this);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         
-        // Get intent data
+        // Set up voice activity listener
+        AudioUtils.setVoiceActivityListener(this);
+        
+        checkAudioPermissions();
+        
+        // Get intent data first
         Intent intent = getIntent();
         chatId = intent.getStringExtra("chatId");
         participantName = intent.getStringExtra("participantName");
@@ -82,6 +103,13 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         isIncomingCall = intent.getBooleanExtra("isIncomingCall", false);
         boolean startMuted = intent.getBooleanExtra("startMuted", false);
         boolean isCallAnswered = intent.getBooleanExtra("isCallAnswered", false);
+        
+        // Initialize voice streamer AFTER getting chatId
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (chatId != null && currentUserId != null) {
+            voiceStreamer = new VoiceStreamer(chatId, currentUserId);
+            voiceStreamer.setStreamListener(this);
+        }
         
         // Set initial muted state if specified
         if (startMuted) {
@@ -103,6 +131,34 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         }
     }
     
+    private void checkAudioPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, AUDIO_PERMISSION_REQUEST_CODE);
+        } else {
+            setupAudioManager();
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == AUDIO_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                setupAudioManager();
+            } else {
+                Toast.makeText(this, "Audio permission required for voice calls", Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+    }
+    
+    private void setupAudioManager() {
+        if (audioManager != null) {
+            AudioUtils.setupForVoiceCall(this);
+            AudioUtils.logAudioState(this);
+        }
+    }
+    
     private void initViews() {
         avatarView = findViewById(R.id.call_avatar);
         nameText = findViewById(R.id.call_name);
@@ -113,6 +169,7 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         btnSpeaker = findViewById(R.id.btn_speaker);
         btnVideo = findViewById(R.id.btn_video);
         videoContainer = findViewById(R.id.video_container);
+        speakingIndicator = findViewById(R.id.speaking_indicator);
     }
     
     private void setupCallUI() {
@@ -159,8 +216,8 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     }
     
     private void setupCallListeners() {
-        // Setup SocketManager call listeners to handle call-ended events
         SocketManager.setupCallListeners(this);
+        SocketManager.setupVoiceListeners(this);
     }
     
     private void handleIncomingCall() {
@@ -202,26 +259,38 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         callDurationText.setVisibility(View.VISIBLE);
         callDurationText.setText("00:00");
         
-        // Start duration timer
+        setupAudioManager();
+        
+        // Start voice streaming
+        if (voiceStreamer != null) {
+            voiceStreamer.startStreaming();
+        }
+        
         callDurationHandler.postDelayed(updateDurationRunnable, 1000);
         
-        Toast.makeText(this, "Call connected", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Call connected - Voice streaming active", Toast.LENGTH_SHORT).show();
     }
     
     private void endCall() {
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
         
-        // Emit call end using SocketManager
         SocketManager.emitCallEnd(callId, currentUserId, participantId);
         
-        // Stop duration timer
         callDurationHandler.removeCallbacks(updateDurationRunnable);
         
-        // Stop ringtone if playing
+        // Stop voice streaming
+        if (voiceStreamer != null) {
+            voiceStreamer.stopStreaming();
+        }
+        
         if (ringtone != null && ringtone.isPlaying()) {
             ringtone.stop();
             ringtone.release();
+        }
+        
+        if (audioManager != null) {
+            AudioUtils.cleanupAfterCall(this);
         }
         
         Toast.makeText(this, "Call ended", Toast.LENGTH_SHORT).show();
@@ -232,7 +301,17 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         isMuted = !isMuted;
         updateMuteButtonUI();
         
-        // Emit mute status using SocketManager
+        if (audioManager != null) {
+            audioManager.setMicrophoneMute(isMuted);
+            AudioUtils.logAudioState(this);
+        }
+        
+        // Hide speaking indicator when muted
+        if (isMuted && speakingIndicator != null) {
+            speakingIndicator.clearAnimation();
+            speakingIndicator.setVisibility(View.GONE);
+        }
+        
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
         SocketManager.emitCallMuteToggle(callId, currentUserId, participantId, isMuted);
@@ -249,6 +328,12 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         isSpeakerOn = !isSpeakerOn;
         btnSpeaker.setImageResource(isSpeakerOn ? R.drawable.ic_speaker_on : R.drawable.ic_speaker_off);
         btnSpeaker.setColorFilter(isSpeakerOn ? getColor(R.color.blue) : getColor(R.color.gray));
+        
+        if (audioManager != null) {
+            audioManager.setSpeakerphoneOn(isSpeakerOn);
+            AudioUtils.logAudioState(this);
+        }
+        
         Toast.makeText(this, isSpeakerOn ? "Speaker on" : "Speaker off", Toast.LENGTH_SHORT).show();
     }
     
@@ -267,7 +352,6 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
             avatarView.setVisibility(View.VISIBLE);
         }
         
-        // Emit video status using SocketManager
         String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
         SocketManager.emitCallVideoToggle(callId, currentUserId, participantId, isVideoOn);
@@ -293,6 +377,9 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
         if (ringtone != null) {
             ringtone.release();
         }
+        if (audioManager != null) {
+            AudioUtils.cleanupAfterCall(this);
+        }
     }
     
     @Override
@@ -310,7 +397,6 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallAnswered(String callId, long timestamp) {
         runOnUiThread(() -> {
-            Log.d("CallActivity", "Call answered: " + callId);
             connectCall();
         });
     }
@@ -318,7 +404,6 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallDeclined(String callId, long timestamp) {
         runOnUiThread(() -> {
-            Log.d("CallActivity", "Call declined: " + callId);
             Toast.makeText(this, "Call declined", Toast.LENGTH_SHORT).show();
             finish();
         });
@@ -327,9 +412,6 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallEnded(String callId, long timestamp) {
         runOnUiThread(() -> {
-            Log.d("CallActivity", "Call ended by other participant: " + callId);
-            
-            // Stop duration timer
             callDurationHandler.removeCallbacks(updateDurationRunnable);
             
             // Stop ringtone if playing
@@ -346,7 +428,6 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallFailed(String callId, String reason) {
         runOnUiThread(() -> {
-            Log.d("CallActivity", "Call failed: " + callId + ", reason: " + reason);
             Toast.makeText(this, "Call failed: " + reason, Toast.LENGTH_SHORT).show();
             finish();
         });
@@ -355,16 +436,42 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
         runOnUiThread(() -> {
-            Log.d("CallActivity", "User " + userId + " mute status: " + isMuted);
-            // Update UI to show other participant's mute status if needed
         });
     }
 
     @Override
     public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
         runOnUiThread(() -> {
-            Log.d("CallActivity", "User " + userId + " video status: " + isVideoOn);
-            // Update UI to show other participant's video status if needed
         });
+    }
+    
+    // VoiceActivityListener implementation
+    @Override
+    public void onVoiceActivityChanged(boolean isSpeaking) {
+        runOnUiThread(() -> {
+            if (speakingIndicator != null) {
+                if (isSpeaking && !isMuted && isCallConnected) {
+                    speakingIndicator.setVisibility(View.VISIBLE);
+                    Animation pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.speaking_pulse);
+                    speakingIndicator.startAnimation(pulseAnimation);
+                } else {
+                    speakingIndicator.clearAnimation();
+                    speakingIndicator.setVisibility(View.GONE);
+                }
+            }
+        });
+    }
+    
+    @Override
+    public void onAudioDataReady(String audioData, String chatId, String userId) {
+        SocketManager.emitVoiceData(audioData, chatId, userId);
+    }
+    
+    @Override
+    public void onVoiceDataReceived(String audioData, String senderId) {
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (!senderId.equals(currentUserId) && voiceStreamer != null) {
+            voiceStreamer.playReceivedAudio(audioData);
+        }
     }
 }

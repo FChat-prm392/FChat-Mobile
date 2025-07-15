@@ -49,7 +49,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Make it a full screen activity like Messenger
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, 
                            WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
@@ -60,8 +59,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         
         sessionManager = new SessionManager(this);
         animationHandler = new Handler();
-        
-        // Get intent data
         Intent intent = getIntent();
         callId = intent.getStringExtra("callId");
         chatId = intent.getStringExtra("chatId");
@@ -111,7 +108,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
             answerIcon.setImageResource(R.drawable.ic_call);
         }
         
-        // Load caller avatar with Glide
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
             Glide.with(this)
                     .load(avatarUrl)
@@ -119,7 +115,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
                     .error(R.drawable.ic_avatar)
                     .into(callerAvatar);
                     
-            // Also set blurred background
             Glide.with(this)
                     .load(avatarUrl)
                     .placeholder(R.drawable.ic_avatar)
@@ -135,12 +130,10 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         rippleRunnable = new Runnable() {
             @Override
             public void run() {
-                // Animate ripple effects
                 animateRipple(ripple1, 0);
                 animateRipple(ripple2, 200);
                 animateRipple(ripple3, 400);
                 
-                // Repeat animation
                 animationHandler.postDelayed(this, 2000);
             }
         };
@@ -165,7 +158,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
             animationHandler.removeCallbacks(rippleRunnable);
         }
         
-        // Clear any pending animations on ripple views
         if (ripple1 != null) {
             ripple1.clearAnimation();
             ripple1.animate().cancel();
@@ -186,7 +178,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         btnMute.setOnClickListener(v -> answerCallMuted());
         btnMessage.setOnClickListener(v -> sendQuickMessage());
         
-        // Add button press animations
         setupButtonAnimation(btnAnswer);
         setupButtonAnimation(btnDecline);
         setupButtonAnimation(btnMute);
@@ -194,7 +185,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     }
     
     private void setupCallListeners() {
-        // Setup SocketManager call listeners to handle call-ended events
         SocketManager.setupCallListeners(this);
     }
     
@@ -252,10 +242,8 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         
         String currentUserId = sessionManager.getCurrentUserId();
         
-        // Emit call answer
         SocketManager.emitCallAnswer(callId, callerId, currentUserId);
         
-        // Start CallActivity with answered call state
         Intent callIntent = new Intent(this, CallActivity.class);
         callIntent.putExtra("chatId", chatId);
         callIntent.putExtra("participantName", callerNameStr);
@@ -263,11 +251,10 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         callIntent.putExtra("avatarUrl", avatarUrl);
         callIntent.putExtra("isVideoCall", isVideoCall);
         callIntent.putExtra("isIncomingCall", true);
-        callIntent.putExtra("isCallAnswered", true); // Add this flag to indicate call is answered
+        callIntent.putExtra("isCallAnswered", true);
         callIntent.putExtra("callId", callId);
         startActivity(callIntent);
         
-        // Add smooth transition
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         finish();
     }
@@ -278,10 +265,8 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         
         String currentUserId = sessionManager.getCurrentUserId();
         
-        // Emit call answer
         SocketManager.emitCallAnswer(callId, callerId, currentUserId);
         
-        // Start CallActivity with muted state
         Intent callIntent = new Intent(this, CallActivity.class);
         callIntent.putExtra("chatId", chatId);
         callIntent.putExtra("participantName", callerNameStr);
@@ -289,9 +274,9 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         callIntent.putExtra("avatarUrl", avatarUrl);
         callIntent.putExtra("isVideoCall", isVideoCall);
         callIntent.putExtra("isIncomingCall", true);
-        callIntent.putExtra("isCallAnswered", true); // Add this flag to indicate call is answered
+        callIntent.putExtra("isCallAnswered", true);
         callIntent.putExtra("callId", callId);
-        callIntent.putExtra("startMuted", true); // Start with muted microphone
+        callIntent.putExtra("startMuted", true);
         startActivity(callIntent);
         
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
@@ -304,10 +289,8 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         
         String currentUserId = sessionManager.getCurrentUserId();
         
-        // Decline the call first
         SocketManager.emitCallDecline(callId, callerId, currentUserId);
         
-        // Open chat with the caller
         Intent chatIntent = new Intent(this, ChatDetailActivity.class);
         chatIntent.putExtra("chatId", chatId);
         chatIntent.putExtra("participantName", callerNameStr);
@@ -325,10 +308,8 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
         
         String currentUserId = sessionManager.getCurrentUserId();
         
-        // Emit call decline
         SocketManager.emitCallDecline(callId, callerId, currentUserId);
         
-        // Add decline animation
         btnDecline.animate()
                 .scaleX(1.2f)
                 .scaleY(1.2f)
@@ -350,31 +331,25 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     
     @Override
     public void onBackPressed() {
-        // In Messenger style, back button declines the call
         declineCall();
     }
     
     @Override
     protected void onPause() {
         super.onPause();
-        // Don't pause the activity - keep it running like Messenger
     }
 
-    // CallListener interface implementations
     @Override
     public void onIncomingCall(String callId, String chatId, String callerId, String callerName, boolean isVideoCall, long timestamp) {
-        // Not needed in IncomingCallActivity - already handled by intent
     }
 
     @Override
     public void onCallAnswered(String callId, long timestamp) {
-        // Not needed in IncomingCallActivity - handled by answer button
     }
 
     @Override
     public void onCallDeclined(String callId, long timestamp) {
         runOnUiThread(() -> {
-            Log.d("IncomingCallActivity", "Call declined by other participant: " + callId);
             stopRingtone();
             stopRippleAnimation();
             finish();
@@ -384,7 +359,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     @Override
     public void onCallEnded(String callId, long timestamp) {
         runOnUiThread(() -> {
-            Log.d("IncomingCallActivity", "Call ended by other participant: " + callId);
             stopRingtone();
             stopRippleAnimation();
             finish();
@@ -394,7 +368,6 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     @Override
     public void onCallFailed(String callId, String reason) {
         runOnUiThread(() -> {
-            Log.d("IncomingCallActivity", "Call failed: " + callId + ", reason: " + reason);
             stopRingtone();
             stopRippleAnimation();
             finish();
@@ -403,11 +376,13 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
 
     @Override
     public void onCallMuteStatus(String callId, String userId, boolean isMuted) {
-        // Not needed in IncomingCallActivity
     }
 
     @Override
     public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
-        // Not needed in IncomingCallActivity
+    }
+    
+    @Override
+    public void onVoiceDataReceived(String audioData, String senderId) {
     }
 }
