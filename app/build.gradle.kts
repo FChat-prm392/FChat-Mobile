@@ -28,7 +28,7 @@ android {
         }
     }
 
-    signingConfigs {
+    /*signingConfigs {
         create("newdebug") {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
@@ -48,7 +48,7 @@ android {
                 "proguard-rules.pro"
             )
         }
-    }
+    }*/
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -63,6 +63,7 @@ dependencies {
     implementation ("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation ("io.socket:socket.io-client:2.0.1")
     implementation("com.github.bumptech.glide:glide:4.15.1")
+    implementation(libs.firebase.storage)
     annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
     
     // Firebase Authentication

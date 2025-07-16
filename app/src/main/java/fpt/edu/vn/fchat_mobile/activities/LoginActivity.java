@@ -14,6 +14,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import fpt.edu.vn.fchat_mobile.R;
+import fpt.edu.vn.fchat_mobile.models.User;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
@@ -45,6 +46,15 @@ public class LoginActivity extends AppCompatActivity implements FirebaseAuthMana
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        sessionManager = new SessionManager(this);
+
+        if (sessionManager.hasValidSession()) {
+            startActivity(new Intent(this, ChatListActivity.class));
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_login);
 
         initViews();
@@ -52,6 +62,7 @@ public class LoginActivity extends AppCompatActivity implements FirebaseAuthMana
         setupListeners();
         setupFirebaseAuth();
     }
+
 
     private void initViews() {
         emailLayout = findViewById(R.id.emailLayout);
@@ -70,32 +81,14 @@ public class LoginActivity extends AppCompatActivity implements FirebaseAuthMana
         SocketManager.initializeSocket();
         socket = SocketManager.getSocket();
 
-        socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                runOnUiThread(() -> {
-                    Toast.makeText(LoginActivity.this, "Connected to server", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+        socket.on(Socket.EVENT_CONNECT, args ->
+                runOnUiThread(() -> Toast.makeText(this, "Connected to server", Toast.LENGTH_SHORT).show()));
 
-        socket.on(Socket.EVENT_DISCONNECT, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                runOnUiThread(() -> {
-                    Toast.makeText(LoginActivity.this, "Disconnected from server", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+        socket.on(Socket.EVENT_DISCONNECT, args ->
+                runOnUiThread(() -> Toast.makeText(this, "Disconnected from server", Toast.LENGTH_SHORT).show()));
 
-        socket.on(Socket.EVENT_CONNECT_ERROR, new Emitter.Listener() {
-            @Override
-            public void call(Object... args) {
-                runOnUiThread(() -> {
-                    Toast.makeText(LoginActivity.this, "Connection error", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+        socket.on(Socket.EVENT_CONNECT_ERROR, args ->
+                runOnUiThread(() -> Toast.makeText(this, "Connection error", Toast.LENGTH_SHORT).show()));
     }
 
     private void setupListeners() {
@@ -145,15 +138,16 @@ public class LoginActivity extends AppCompatActivity implements FirebaseAuthMana
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().getUser() != null) {
-                    // Save user session
-                    sessionManager.saveUserSession(response.body().getUser());
+                    User user = response.body().getUser();
 
-                    String userId = response.body().getUser().getId();
-                    socket.emit("register-user", userId);
+                    sessionManager.saveUserSession(user);  // ✅ Save session
+                    socket.emit("register-user", user.getId());
 
-                    String name = response.body().getUser().getFullname();
-                    Toast.makeText(LoginActivity.this, "Welcome " + name, Toast.LENGTH_SHORT).show();
+                    Log.d("LoginActivity", "User avatar: " + user.getImageURL());  // ✅ Debug
+                    Toast.makeText(LoginActivity.this, "Welcome " + user.getFullname(), Toast.LENGTH_SHORT).show();
+
                     startActivity(new Intent(LoginActivity.this, ChatListActivity.class));
+                    finish();
                 } else {
                     Toast.makeText(LoginActivity.this, "Invalid credentials", Toast.LENGTH_SHORT).show();
                 }

@@ -80,7 +80,8 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     private boolean isTyping = false;
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
-    
+
+    // Reaction callback implementation
     private final ReactionManager.ReactionCallback reactionCallback = new ReactionManager.ReactionCallback() {
         @Override
         public void onReactionSelected(String messageId, String emoji, boolean isAdding) {
@@ -110,13 +111,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         sessionManager = new SessionManager(this);
         reactionRepository = new ReactionRepository();
-        
         if (!sessionManager.hasValidSession()) {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
-        
         String currentUserId = sessionManager.getCurrentUserId();
         String currentUserName = sessionManager.getCurrentUserUsername();
 
@@ -129,7 +128,6 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         btnCamera = findViewById(R.id.btn_camera);
         btnCall = findViewById(R.id.btn_call);
         btnVideo = findViewById(R.id.btn_video);
-        
         typingIndicator = findViewById(R.id.typing_indicator);
         typingIndicatorContainer = findViewById(R.id.typing_indicator_container);
 
@@ -150,21 +148,20 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
 
         SocketManager.initializeSocket();
         SocketManager.setupMessageStatusListeners(this);
-        
         setupCallListeners();
 
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
         }
-        
+
         if (currentUserId != null) {
             SocketManager.registerUser(currentUserId);
         }
-        
+
         if (chatId != null && currentUserId != null) {
             SocketManager.emitUserEnteredChat(chatId, currentUserId);
         }
-        
+
         if (chatId != null && currentUserId != null) {
             SocketManager.requestChatStatusSync(chatId, currentUserId);
         }
@@ -330,7 +327,7 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         if (!isMine && msg.getId() != null) {
                             SocketManager.emitMessageDelivered(msg.getId(), chatId, currentUserId);
                         }
-                        
+
                         if (!isMine && msg.getId() != null) {
                             SocketManager.emitMessageRead(msg.getId(), chatId, currentUserId);
                         }
@@ -343,6 +340,9 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                         recyclerView.scrollToPosition(messageList.size() - 1);
                     }
                     
+                    Log.d(TAG, "Successfully loaded and sorted " + messageList.size() + " messages");
+
+
                     markAllMessagesAsRead();
                 } else {
                     Toast.makeText(ChatDetailActivity.this, "Failed to load messages", Toast.LENGTH_SHORT).show();

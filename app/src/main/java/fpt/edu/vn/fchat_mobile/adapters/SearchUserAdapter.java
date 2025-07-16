@@ -4,170 +4,90 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import fpt.edu.vn.fchat_mobile.R;
 import fpt.edu.vn.fchat_mobile.models.Account;
 import fpt.edu.vn.fchat_mobile.repositories.FriendRepository;
 
-public class SearchUserAdapter extends RecyclerView.Adapter<SearchUserAdapter.ViewHolder> {
-    private Context context;
-    private List<FriendRepository.AccountWithStatus> usersWithStatus;
-    private String currentUserId;
-    private FriendRepository friendRepository;
+public class SearchUserAdapter extends RecyclerView.Adapter<SearchUserAdapter.UserViewHolder> {
+    private final Context context;
+    private List<FriendRepository.AccountWithStatus> users;
+    private final String currentUserId;
+    private final OnProfileClickListener profileClickListener;
 
-    public SearchUserAdapter(Context context, List<FriendRepository.AccountWithStatus> usersWithStatus, String currentUserId) {
+    public SearchUserAdapter(Context context, List<FriendRepository.AccountWithStatus> users, String currentUserId, OnProfileClickListener listener) {
         this.context = context;
-        this.usersWithStatus = usersWithStatus;
+        this.users = users != null ? users : new ArrayList<>();
         this.currentUserId = currentUserId;
-        this.friendRepository = new FriendRepository();
+        this.profileClickListener = listener;
     }
 
-    public void updateUsers(List<FriendRepository.AccountWithStatus> newUsersWithStatus) {
-        this.usersWithStatus = newUsersWithStatus;
+    public void updateUsers(List<FriendRepository.AccountWithStatus> newUsers) {
+        this.users = newUsers != null ? newUsers : new ArrayList<>();
         notifyDataSetChanged();
     }
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public UserViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(context).inflate(R.layout.item_search_user, parent, false);
-        return new ViewHolder(view);
+        return new UserViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        try {
-            FriendRepository.AccountWithStatus userWithStatus = usersWithStatus.get(position);
-            
-            if (userWithStatus == null || userWithStatus.getAccount() == null) {
-                return;
-            }
+    public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
+        FriendRepository.AccountWithStatus userWithStatus = users.get(position);
+        Account user = userWithStatus.getAccount();
 
-            Account user = userWithStatus.getAccount();
-            FriendRepository.FriendshipStatus status = userWithStatus.getStatus();
+        holder.fullNameTextView.setText(user.getFullname() != null ? user.getFullname() : "Unknown");
+        holder.usernameTextView.setText(user.getUsername() != null ? user.getUsername() : "");
 
-            // Set name with null check
-            String fullName = user.getFullname();
-            holder.nameText.setText(fullName != null ? fullName : "Unknown User");
-            
-            // Set username with null check
-            String username = user.getUsername();
-            holder.usernameText.setText(username != null ? "@" + username : "@unknown");
-            
-            // Set status with null check
-            String userStatus = user.getCurrentStatus();
-            holder.statusText.setText(userStatus != null && !userStatus.isEmpty() ? userStatus : "Available");
-
-            // Load avatar with null checks
-            String imageUrl = user.getImageURL();
-            if (imageUrl != null && !imageUrl.isEmpty() && !imageUrl.equals("N/A")) {
-                Glide.with(context)
-                        .load(imageUrl)
-                        .placeholder(R.drawable.ic_avatar)
-                        .error(R.drawable.ic_avatar)
-                        .circleCrop()
-                        .into(holder.avatarImage);
-            } else {
-                holder.avatarImage.setImageResource(R.drawable.ic_avatar);
-            }
-
-            // Configure button based on friendship status
-            String userId = user.get_id();
-            switch (status) {
-                case SELF:
-                    holder.addButton.setVisibility(View.GONE);
-                    holder.statusText.setText("Đây là bạn");
-                    break;
-                    
-                case FRIENDS:
-                    holder.addButton.setVisibility(View.VISIBLE);
-                    holder.addButton.setText("Bạn bè");
-                    holder.addButton.setEnabled(false);
-                    holder.addButton.setBackgroundColor(context.getResources().getColor(android.R.color.darker_gray));
-                    break;
-                    
-                case PENDING:
-                    holder.addButton.setVisibility(View.VISIBLE);
-                    holder.addButton.setText("Đã gửi");
-                    holder.addButton.setEnabled(false);
-                    holder.addButton.setBackgroundColor(context.getResources().getColor(android.R.color.darker_gray));
-                    break;
-                    
-                case NOT_FRIENDS:
-                    holder.addButton.setVisibility(View.VISIBLE);
-                    holder.addButton.setText("Thêm bạn");
-                    holder.addButton.setEnabled(true);
-                    holder.addButton.setBackgroundColor(context.getResources().getColor(R.color.colorPrimary));
-                      // Handle add friend button click
-                    holder.addButton.setOnClickListener(v -> {
-                        if (userId == null || currentUserId == null) {
-                            Toast.makeText(context, "Lỗi: Không thể gửi lời mời", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        
-                        holder.addButton.setEnabled(false);
-                        holder.addButton.setText("Đang gửi...");
-                        
-                        friendRepository.sendFriendRequest(currentUserId, userId, new FriendRepository.SimpleCallback() {
-                            @Override
-                            public void onSuccess() {
-                                if (context != null) {
-                                    Toast.makeText(context, "Đã gửi lời mời kết bạn", Toast.LENGTH_SHORT).show();
-                                    holder.addButton.setText("Đã gửi");
-                                    holder.addButton.setEnabled(false);
-                                    holder.addButton.setBackgroundColor(context.getResources().getColor(android.R.color.darker_gray));
-                                }
-                            }
-
-                            @Override
-                            public void onError(Throwable t) {
-                                if (context != null) {
-                                    String errorMsg = t != null ? t.getMessage() : "Lỗi không xác định";
-                                    Toast.makeText(context, "Lỗi khi gửi lời mời: " + errorMsg, Toast.LENGTH_SHORT).show();
-                                    holder.addButton.setText("Thêm bạn");
-                                    holder.addButton.setEnabled(true);
-                                    holder.addButton.setBackgroundColor(context.getResources().getColor(R.color.colorPrimary));
-                                }
-                            }
-                        });
-                    });
-                    break;
-            }
-        } catch (Exception e) {
-            if (context != null) {
-                Toast.makeText(context, "Lỗi hiển thị người dùng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+        if (user.getImageURL() != null && !user.getImageURL().isEmpty()) {
+            Glide.with(context)
+                    .load(user.getImageURL())
+                    .placeholder(R.drawable.ic_avatar)
+                    .error(R.drawable.ic_avatar)
+                    .into(holder.avatarImageView);
+        } else {
+            holder.avatarImageView.setImageResource(R.drawable.ic_avatar);
         }
+
+        holder.itemView.setOnClickListener(v -> {
+            if (profileClickListener != null && !user.get_id().equals(currentUserId)) {
+                profileClickListener.onProfileClick(user.get_id());
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
-        return usersWithStatus != null ? usersWithStatus.size() : 0;
+        return users.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        ImageView avatarImage;
-        TextView nameText, usernameText, statusText;
-        Button addButton;
+    public static class UserViewHolder extends RecyclerView.ViewHolder {
+        ImageView avatarImageView;
+        TextView fullNameTextView;
+        TextView usernameTextView;
 
-        public ViewHolder(@NonNull View itemView) {
+        public UserViewHolder(@NonNull View itemView) {
             super(itemView);
-            avatarImage = itemView.findViewById(R.id.avatar_image);
-            nameText = itemView.findViewById(R.id.name_text);
-            usernameText = itemView.findViewById(R.id.username_text);
-            statusText = itemView.findViewById(R.id.status_text);
-            addButton = itemView.findViewById(R.id.add_button);
+            avatarImageView = itemView.findViewById(R.id.avatar_image);
+            fullNameTextView = itemView.findViewById(R.id.name_text);
+            usernameTextView = itemView.findViewById(R.id.username_text);
         }
+    }
+
+    public interface OnProfileClickListener {
+        void onProfileClick(String userId);
     }
 }

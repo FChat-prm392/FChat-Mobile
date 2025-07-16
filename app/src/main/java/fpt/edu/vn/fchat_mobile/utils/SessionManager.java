@@ -12,16 +12,14 @@ public class SessionManager {
     private static final String KEY_USERNAME = "username";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_GENDER = "gender";
-    private static final String KEY_AVATAR_URL = "avatar_url";
     private static final String KEY_PHONE_NUMBER = "phone_number";
+    private static final String KEY_AVATAR_URL = "avatar_url";
     private static final String KEY_IS_LOGGED_IN = "is_logged_in";
 
-    private SharedPreferences sharedPreferences;
-    private SharedPreferences.Editor editor;
-    private Context context;
+    private final SharedPreferences sharedPreferences;
+    private final SharedPreferences.Editor editor;
 
     public SessionManager(Context context) {
-        this.context = context;
         sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         editor = sharedPreferences.edit();
     }
@@ -35,87 +33,69 @@ public class SessionManager {
         editor.putString(KEY_USERNAME, user.getUsername());
         editor.putString(KEY_EMAIL, user.getEmail());
         editor.putString(KEY_GENDER, user.getGender());
-        editor.putString(KEY_AVATAR_URL, user.getimageURL());
         editor.putString(KEY_PHONE_NUMBER, user.getPhoneNumber());
+        editor.putString(KEY_AVATAR_URL, user.getImageURL());
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.apply();
     }
 
-    /**
-     * Get current user ID
-     */
     public String getCurrentUserId() {
         return sharedPreferences.getString(KEY_USER_ID, null);
     }
 
-    /**
-     * Get current user's full name
-     */
     public String getCurrentUserFullname() {
         return sharedPreferences.getString(KEY_FULLNAME, null);
     }
 
-    /**
-     * Get current user's username
-     */
     public String getCurrentUserUsername() {
         return sharedPreferences.getString(KEY_USERNAME, null);
     }
 
-    /**
-     * Get current user's email
-     */
     public String getCurrentUserEmail() {
         return sharedPreferences.getString(KEY_EMAIL, null);
     }
 
-    /**
-     * Check if user is logged in
-     */
+    public String getCurrentUserGender() {
+        return sharedPreferences.getString(KEY_GENDER, null);
+    }
+
+    public String getCurrentUserPhoneNumber() {
+        return sharedPreferences.getString(KEY_PHONE_NUMBER, null);
+    }
+
+    public String getCurrentUserAvatarUrl() {
+        return sharedPreferences.getString(KEY_AVATAR_URL, "N/A");
+    }
+
     public boolean isLoggedIn() {
         return sharedPreferences.getBoolean(KEY_IS_LOGGED_IN, false);
     }
 
-    public String getCurrentUserAvatarUrl() {
-        return sharedPreferences.getString(KEY_AVATAR_URL, "N/A"); // ✅ added
-    }
-
-    /**
-     * Get complete user data
-     */
-    public User getCurrentUser() {
-        if (!isLoggedIn()) {
-            return null;
-        }
-
-        // Create a User object with stored data
-        // Note: You might need to add setters to your User class or create a constructor
-        // For now, I'll create a simple method that returns the basic info
-        return null; // You can enhance this based on your User class structure
-    }
-
-    /**
-     * Clear user session (logout)
-     */
-    public void logout() {
-    String userId = getCurrentUserId();
-    
-    if (userId != null) {
-          SocketManager.initializeSocket();
-          SocketManager.emitUserLogout(userId);
-
-    }
-    
-    editor.clear();
-    editor.apply();
-}
-
-
-
-    /**
-     * Check if user session exists and is valid
-     */
     public boolean hasValidSession() {
         return isLoggedIn() && getCurrentUserId() != null;
+    }
+
+    public User getCurrentUser() {
+        if (!isLoggedIn()) return null;
+
+        User user = new User();
+        user.setId(getCurrentUserId());
+        user.setFullname(getCurrentUserFullname());
+        user.setUsername(getCurrentUserUsername());
+        user.setEmail(getCurrentUserEmail());
+        user.setGender(getCurrentUserGender());
+        user.setPhoneNumber(getCurrentUserPhoneNumber());
+        user.setImageURL(getCurrentUserAvatarUrl());
+        return user;
+    }
+
+    public void logout() {
+        String userId = getCurrentUserId();
+        if (userId != null) {
+            SocketManager.initializeSocket();
+            SocketManager.emitUserLogout(userId);
+        }
+        editor.clear();
+        editor.apply();
     }
 }

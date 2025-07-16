@@ -102,7 +102,6 @@ public class MenuActivity extends AppCompatActivity {
         if (avatarUrl != null && !avatarUrl.equals("N/A")) {
             Glide.with(this)
                     .load(avatarUrl)
-                    .placeholder(R.drawable.ic_avatar)
                     .circleCrop()
                     .into(avatarView);
         }

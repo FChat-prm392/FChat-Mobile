@@ -1,5 +1,7 @@
 package fpt.edu.vn.fchat_mobile.repositories;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,28 +10,180 @@ import fpt.edu.vn.fchat_mobile.models.Friend;
 import fpt.edu.vn.fchat_mobile.models.Friendship;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.requests.SendFriendRequestRequest;
-import fpt.edu.vn.fchat_mobile.requests.UpdateFriendRequestRequest;
 import fpt.edu.vn.fchat_mobile.responses.AccountListResponse;
 import fpt.edu.vn.fchat_mobile.responses.FriendshipResponse;
+import fpt.edu.vn.fchat_mobile.responses.NonFriendsResponse;
+import fpt.edu.vn.fchat_mobile.responses.UserResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class FriendRepository {
+    private static final String TAG = "FriendRepository";
     private final ApiService apiService;
 
     public FriendRepository() {
         apiService = ApiClient.getService();
     }
 
-    // Get friend list (Account objects)
+    public void getNonFriends(String userId, UsersWithStatusCallback callback) {
+        Log.d(TAG, "Fetching non-friends for user: " + (userId != null ? userId : "null"));
+        if (userId == null) {
+            callback.onError(new Exception("UserId is null"));
+            return;
+        }
+        apiService.getNonFriends(userId).enqueue(new Callback<NonFriendsResponse>() {
+            @Override
+            public void onResponse(Call<NonFriendsResponse> call, Response<NonFriendsResponse> response) {
+                try {
+                    if (response.isSuccessful() && response.body() != null) {
+                        List<UserResponse> userResponses = response.body().getData();
+                        if (userResponses != null) {
+                            List<AccountWithStatus> usersWithStatus = new ArrayList<>();
+                            for (UserResponse userResponse : userResponses) {
+                                Account account = new Account(
+                                        userResponse.getId(),
+                                        userResponse.getFullname(),
+                                        userResponse.getUsername(),
+                                        userResponse.getEmail(),
+                                        userResponse.getAvatarUrl()
+                                );
+                                account.setGender(userResponse.getGender());
+                                account.setPhoneNumber(userResponse.getPhoneNumber());
+                                account.setCurrentStatus(userResponse.getCurrentStatus());
+                                account.setOnline(userResponse.isStatus());
+                                account.setLastOnline(userResponse.getLastOnline());
+                                usersWithStatus.add(new AccountWithStatus(account, userResponse.getFriendshipStatus()));
+                            }
+                            Log.d(TAG, "Fetched " + usersWithStatus.size() + " non-friends");
+                            callback.onSuccess(usersWithStatus);
+                        } else {
+                            Log.w(TAG, "No data field in response");
+                            callback.onSuccess(new ArrayList<>());
+                        }
+                    } else {
+                        String errorMsg = "Failed to fetch non-friends: " + response.code();
+                        Log.e(TAG, errorMsg);
+                        callback.onError(new Exception(errorMsg));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing non-friends response: " + e.getMessage(), e);
+                    callback.onError(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<NonFriendsResponse> call, Throwable t) {
+                Log.e(TAG, "Network error fetching non-friends: " + (t != null ? t.getMessage() : "null"), t);
+                callback.onError(t);
+            }
+        });
+    }
+
+    public void searchUsers(String query, String userId, UsersWithStatusCallback callback) {
+        Log.d(TAG, "Searching users with query: " + (query != null ? query : "null") + ", userId: " + (userId != null ? userId : "null"));
+        try {
+            if (query == null || query.trim().isEmpty()) {
+                callback.onError(new Exception("Search query cannot be empty"));
+                return;
+            }
+            if (userId == null) {
+                callback.onError(new Exception("UserId is null for search"));
+                return;
+            }
+
+            apiService.searchUsers(query.trim(), userId).enqueue(new Callback<List<UserResponse>>() {
+                @Override
+                public void onResponse(Call<List<UserResponse>> call, Response<List<UserResponse>> response) {
+                    try {
+                        Log.d(TAG, "Search response code: " + response.code());
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<UserResponse> userResponses = response.body();
+                            List<AccountWithStatus> usersWithStatus = new ArrayList<>();
+                            for (UserResponse userResponse : userResponses) {
+                                Account account = new Account(
+                                        userResponse.getId(),
+                                        userResponse.getFullname(),
+                                        userResponse.getUsername(),
+                                        userResponse.getEmail(),
+                                        userResponse.getAvatarUrl()
+                                );
+                                account.setGender(userResponse.getGender());
+                                account.setPhoneNumber(userResponse.getPhoneNumber());
+                                account.setCurrentStatus(userResponse.getCurrentStatus());
+                                account.setOnline(userResponse.isStatus());
+                                account.setLastOnline(userResponse.getLastOnline());
+                                usersWithStatus.add(new AccountWithStatus(account, userResponse.getFriendshipStatus()));
+                            }
+                            Log.d(TAG, "Fetched " + usersWithStatus.size() + " search results");
+                            callback.onSuccess(usersWithStatus);
+                        } else {
+                            String errorMsg = "Search failed with code: " + response.code();
+                            Log.e(TAG, errorMsg + (response.errorBody() != null ? " - " + response.errorBody().toString() : ""));
+                            callback.onError(new Exception(errorMsg));
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error processing search response: " + e.getMessage(), e);
+                        callback.onError(e);
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<List<UserResponse>> call, Throwable t) {
+                    Log.e(TAG, "Network error searching users: " + (t != null ? t.getMessage() : "null"), t);
+                    callback.onError(t);
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error initiating search: " + e.getMessage(), e);
+            callback.onError(e);
+        }
+    }
+
+    public void sendFriendRequest(String requesterId, String recipientId, SimpleCallback callback) {
+        Log.d(TAG, "Sending friend request from requesterId: " + (requesterId != null ? requesterId : "null") + " to recipientId: " + (recipientId != null ? recipientId : "null"));
+        if (requesterId == null || recipientId == null) {
+            callback.onError(new Exception("RequesterId or recipientId is null"));
+            return;
+        }
+        if (requesterId.equals(recipientId)) {
+            callback.onError(new Exception("Cannot send friend request to yourself"));
+            return;
+        }
+        SendFriendRequestRequest request = new SendFriendRequestRequest(requesterId, recipientId);
+        Log.d(TAG, "Request object: requesterId=" + request.getRequesterId() + ", recipientId=" + request.getRecipientId());
+        apiService.sendFriendRequest(request).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "Friend request sent successfully");
+                    callback.onSuccess();
+                } else {
+                    String errorMsg = "API Error: " + response.code() + (response.errorBody() != null ? " - " + response.errorBody().toString() : "");
+                    Log.e(TAG, errorMsg);
+                    callback.onError(new Exception(errorMsg));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e(TAG, "Network error sending friend request: " + (t != null ? t.getMessage() : "null"), t);
+                callback.onError(t);
+            }
+        });
+    }
+
     public void getFriendList(String userId, FriendListCallback callback) {
+        Log.d(TAG, "Fetching friend list for user: " + (userId != null ? userId : "null"));
+        if (userId == null) {
+            callback.onError(new Exception("UserId is null"));
+            return;
+        }
         apiService.getFriendList(userId).enqueue(new Callback<AccountListResponse>() {
             @Override
             public void onResponse(Call<AccountListResponse> call, Response<AccountListResponse> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    // Extract friends from accepted friendships
                     List<Account> friends = new ArrayList<>();
                     if (response.body().getData() != null) {
                         friends.addAll(response.body().getData());
@@ -47,344 +201,142 @@ public class FriendRepository {
         });
     }
 
-    // Get pending friend requests
     public void getFriendRequests(String userId, FriendRequestsCallback callback) {
+        Log.d(TAG, "Fetching friend requests for user: " + (userId != null ? userId : "null"));
+        if (userId == null) {
+            callback.onError(new Exception("UserId is null"));
+            return;
+        }
         apiService.getFriendRequests(userId).enqueue(new Callback<FriendshipResponse>() {
             @Override
             public void onResponse(Call<FriendshipResponse> call, Response<FriendshipResponse> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    List<Friendship> friendRequests = response.body().getData();
-                    if (friendRequests != null) {
-                        callback.onSuccess(friendRequests);
+                try {
+                    if (response.isSuccessful() && response.body() != null) {
+                        List<Friendship> friendRequests = response.body().getData();
+                        Log.d(TAG, "Fetched " + (friendRequests != null ? friendRequests.size() : 0) + " friend requests");
+                        callback.onSuccess(friendRequests != null ? friendRequests : new ArrayList<>());
                     } else {
-                        callback.onSuccess(new ArrayList<>());
+                        String errorMsg = "Failed to fetch friend requests: " + response.code();
+                        Log.e(TAG, errorMsg);
+                        callback.onError(new Exception(errorMsg));
                     }
-                } else {
-                    callback.onError(new Exception("API Error: " + response.code()));
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing friend requests response: " + e.getMessage(), e);
+                    callback.onError(e);
                 }
             }
 
             @Override
             public void onFailure(Call<FriendshipResponse> call, Throwable t) {
+                Log.e(TAG, "Network error fetching friend requests: " + (t != null ? t.getMessage() : "null"), t);
                 callback.onError(t);
             }
         });
     }
 
-    // Send friend request
-    public void sendFriendRequest(String requesterId, String recipientId, SimpleCallback callback) {
-        SendFriendRequestRequest request = new SendFriendRequestRequest(requesterId, recipientId);
-        apiService.sendFriendRequest(request).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    callback.onSuccess();
-                } else {
-                    callback.onError(new Exception("API Error: " + response.code()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) {
-                callback.onError(t);
-            }
-        });
-    }
-
-    // Accept friend request
-    public void acceptFriendRequest(String friendshipId, SimpleCallback callback) {
-        UpdateFriendRequestRequest request = new UpdateFriendRequestRequest("accepted");
-        apiService.updateFriendRequest(friendshipId, request).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    callback.onSuccess();
-                } else {
-                    callback.onError(new Exception("API Error: " + response.code()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) {
-                callback.onError(t);
-            }
-        });
-    }
-
-    // Decline friend request
-    public void declineFriendRequest(String friendshipId, SimpleCallback callback) {
-        UpdateFriendRequestRequest request = new UpdateFriendRequestRequest("declined");
-        apiService.updateFriendRequest(friendshipId, request).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    callback.onSuccess();
-                } else {
-                    callback.onError(new Exception("API Error: " + response.code()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) {
-                callback.onError(t);
-            }
-        });
-    }
-
-    // Delete friendship
-    public void deleteFriendship(String friendshipId, SimpleCallback callback) {
-        apiService.deleteFriendship(friendshipId).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    callback.onSuccess();
-                } else {
-                    callback.onError(new Exception("API Error: " + response.code()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) {
-                callback.onError(t);
-            }
-        });
-    }
-
-    // Search users
-    public void searchUsers(String query, UsersCallback callback) {
-        try {
-            if (query == null || query.trim().isEmpty()) {
-                callback.onError(new Exception("Search query cannot be empty"));
-                return;
-            }
-
-            apiService.searchUsers(query.trim()).enqueue(new Callback<AccountListResponse>() {
-                @Override
-                public void onResponse(Call<AccountListResponse> call, Response<AccountListResponse> response) {
-                    try {
-                        if (response.isSuccessful() && response.body() != null) {
-                            AccountListResponse responseBody = response.body();
-                            if (responseBody.isSuccess()) {
-                                List<Account> users = responseBody.getData();
-                                callback.onSuccess(users != null ? users : new ArrayList<>());
-                            } else {
-                                String message = responseBody.getMessage() != null ? responseBody.getMessage() : "Search failed";
-                                callback.onError(new Exception("Server error: " + message));
-                            }
-                        } else {
-                            String errorMsg = "Search failed with code: " + response.code();
-                            if (response.errorBody() != null) {
-                                try {
-                                    errorMsg += " - " + response.errorBody().string();
-                                } catch (Exception e) {
-                                    // Ignore error body parsing errors
-                                }
-                            }
-                            callback.onError(new Exception(errorMsg));
-                        }
-                    } catch (Exception e) {
-                        callback.onError(new Exception("Error processing search response: " + e.getMessage()));
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<AccountListResponse> call, Throwable t) {
-                    String errorMessage = t != null ? t.getMessage() : "Unknown network error";
-                    callback.onError(new Exception("Network error: " + errorMessage));
-                }
-            });
-        } catch (Exception e) {
-            callback.onError(new Exception("Error initiating search: " + e.getMessage()));
+    public void acceptFriendRequest(String requestId, SimpleCallback callback) {
+        Log.d(TAG, "Accepting friend request: " + (requestId != null ? requestId : "null"));
+        if (requestId == null) {
+            callback.onError(new Exception("RequestId is null"));
+            return;
         }
-    }
-
-    // Legacy method for backward compatibility
-    public void getFriends(String userId, FriendCallback callback) {
-        apiService.getFriends(userId).enqueue(new Callback<List<Friend>>() {
+        apiService.acceptFriendRequest(requestId).enqueue(new Callback<Void>() {
             @Override
-            public void onResponse(Call<List<Friend>> call, Response<List<Friend>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    callback.onSuccess(response.body());
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "Friend request accepted successfully");
+                    callback.onSuccess();
                 } else {
-                    callback.onError(new Exception("API Error"));
+                    String errorMsg = "Failed to accept friend request: " + response.code();
+                    Log.e(TAG, errorMsg);
+                    callback.onError(new Exception(errorMsg));
                 }
             }
 
             @Override
-            public void onFailure(Call<List<Friend>> call, Throwable t) {
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e(TAG, "Network error accepting friend request: " + (t != null ? t.getMessage() : "null"), t);
                 callback.onError(t);
             }
         });
     }
 
-    public void sendFriendRequest(String requesterId, String recipientId, Callback<Void> callback) {
-        apiService.sendFriendRequest(requesterId, recipientId).enqueue(callback);
-    }
-
-    // Check friendship status between two users
-    public void checkFriendshipStatus(String userId1, String userId2, FriendshipStatusCallback callback) {
-        try {
-            if (userId1 == null || userId2 == null) {
-                callback.onStatusChecked(FriendshipStatus.NOT_FRIENDS);
-                return;
-            }
-            
-            getAllFriendships(userId1, new FriendRequestsCallback() {
-                @Override
-                public void onSuccess(List<Friendship> friendships) {
-                    try {
-                        if (friendships == null) {
-                            callback.onStatusChecked(FriendshipStatus.NOT_FRIENDS);
-                            return;
-                        }
-                        
-                        for (Friendship friendship : friendships) {
-                            if (friendship == null) continue;
-                            
-                            boolean isRelatedUser = false;
-                            
-                            // Check requester
-                            if (friendship.getRequester() != null && 
-                                friendship.getRequester().get_id() != null && 
-                                friendship.getRequester().get_id().equals(userId2)) {
-                                isRelatedUser = true;
-                            }
-                            
-                            // Check recipient
-                            if (friendship.getRecipient() != null && 
-                                friendship.getRecipient().get_id() != null && 
-                                friendship.getRecipient().get_id().equals(userId2)) {
-                                isRelatedUser = true;
-                            }
-                            
-                            if (isRelatedUser) {
-                                if (friendship.isAccepted()) {
-                                    callback.onStatusChecked(FriendshipStatus.FRIENDS);
-                                    return;
-                                } else if (friendship.isPending()) {
-                                    callback.onStatusChecked(FriendshipStatus.PENDING);
-                                    return;
-                                }
-                            }
-                        }
-                        callback.onStatusChecked(FriendshipStatus.NOT_FRIENDS);
-                    } catch (Exception e) {
-                        android.util.Log.e("FriendRepository", "Error checking friendship status: " + e.getMessage(), e);
-                        callback.onStatusChecked(FriendshipStatus.NOT_FRIENDS);
-                    }
-                }
-
-                @Override
-                public void onError(Throwable t) {
-                    android.util.Log.e("FriendRepository", "Error getting friendships: " + (t != null ? t.getMessage() : "null"), t);
-                    callback.onStatusChecked(FriendshipStatus.NOT_FRIENDS);
-                }
-            });
-        } catch (Exception e) {
-            android.util.Log.e("FriendRepository", "Error in checkFriendshipStatus: " + e.getMessage(), e);
-            callback.onStatusChecked(FriendshipStatus.NOT_FRIENDS);
+    public void declineFriendRequest(String requestId, SimpleCallback callback) {
+        Log.d(TAG, "Declining friend request: " + (requestId != null ? requestId : "null"));
+        if (requestId == null) {
+            callback.onError(new Exception("RequestId is null"));
+            return;
         }
-    }
-
-    // Enhanced search that includes friendship status
-    public void searchUsersWithFriendshipStatus(String query, String currentUserId, UsersWithStatusCallback callback) {
-        try {
-            if (currentUserId == null) {
-                callback.onError(new Exception("Current user ID is null"));
-                return;
-            }
-            
-            searchUsers(query, new UsersCallback() {
-                @Override
-                public void onSuccess(List<Account> users) {
-                    try {
-                        if (users == null || users.isEmpty()) {
-                            callback.onSuccess(new ArrayList<>());
-                            return;
-                        }
-
-                        List<AccountWithStatus> usersWithStatus = new ArrayList<>();
-                        int[] processedCount = {0}; // Use array to make it effectively final
-                        
-                        for (Account user : users) {
-                            if (user == null || user.get_id() == null) {
-                                processedCount[0]++;
-                                if (processedCount[0] == users.size()) {
-                                    callback.onSuccess(usersWithStatus);
-                                }
-                                continue;
-                            }
-                            
-                            if (user.get_id().equals(currentUserId)) {
-                                // Current user - mark as self
-                                usersWithStatus.add(new AccountWithStatus(user, FriendshipStatus.SELF));
-                                processedCount[0]++;
-                                
-                                if (processedCount[0] == users.size()) {
-                                    callback.onSuccess(usersWithStatus);
-                                }
-                            } else {
-                                checkFriendshipStatus(currentUserId, user.get_id(), status -> {
-                                    try {
-                                        usersWithStatus.add(new AccountWithStatus(user, status));
-                                        processedCount[0]++;
-                                        
-                                        if (processedCount[0] == users.size()) {
-                                            callback.onSuccess(usersWithStatus);
-                                        }
-                                    } catch (Exception e) {
-                                        android.util.Log.e("FriendRepository", "Error processing user status: " + e.getMessage(), e);
-                                        processedCount[0]++;
-                                        if (processedCount[0] == users.size()) {
-                                            callback.onSuccess(usersWithStatus);
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e("FriendRepository", "Error in searchUsersWithFriendshipStatus onSuccess: " + e.getMessage(), e);
-                        callback.onError(e);
-                    }
-                }
-
-                @Override
-                public void onError(Throwable t) {
-                    android.util.Log.e("FriendRepository", "Error in search: " + (t != null ? t.getMessage() : "null"), t);
-                    callback.onError(t);
-                }
-            });
-        } catch (Exception e) {
-            android.util.Log.e("FriendRepository", "Error in searchUsersWithFriendshipStatus: " + e.getMessage(), e);
-            callback.onError(e);
-        }
-    }
-
-    // Get all friendships for a user (including accepted and pending)
-    public void getAllFriendships(String userId, FriendRequestsCallback callback) {
-        apiService.getAllFriendships(userId).enqueue(new Callback<FriendshipResponse>() {
+        apiService.declineFriendRequest(requestId).enqueue(new Callback<Void>() {
             @Override
-            public void onResponse(Call<FriendshipResponse> call, Response<FriendshipResponse> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    List<Friendship> friendships = response.body().getData();
-                    if (friendships != null) {
-                        callback.onSuccess(friendships);
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "Friend request declined successfully");
+                    callback.onSuccess();
+                } else {
+                    String errorMsg = "Failed to decline friend request: " + response.code();
+                    Log.e(TAG, errorMsg);
+                    callback.onError(new Exception(errorMsg));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e(TAG, "Network error declining friend request: " + (t != null ? t.getMessage() : "null"), t);
+                callback.onError(t);
+            }
+        });
+    }
+
+    public void getUserById(String userId, UserCallback callback) {
+        Log.d(TAG, "Fetching user by ID: " + (userId != null ? userId : "null"));
+        if (userId == null) {
+            callback.onError(new Exception("UserId is null"));
+            return;
+        }
+        apiService.getUserById(userId).enqueue(new Callback<UserResponse>() {
+            @Override
+            public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
+                try {
+                    if (response.isSuccessful() && response.body() != null) {
+                        UserResponse userResponse = response.body();
+                        Account account = new Account(
+                                userResponse.getId(),
+                                userResponse.getFullname(),
+                                userResponse.getUsername(),
+                                userResponse.getEmail(),
+                                userResponse.getAvatarUrl()
+                        );
+                        account.setGender(userResponse.getGender());
+                        account.setPhoneNumber(userResponse.getPhoneNumber());
+                        account.setCurrentStatus(userResponse.getCurrentStatus());
+                        account.setOnline(userResponse.isStatus());
+                        account.setLastOnline(userResponse.getLastOnline());
+                        callback.onSuccess(account);
                     } else {
-                        callback.onSuccess(new ArrayList<>());
+                        String errorMsg = "Failed to fetch user: " + response.code();
+                        Log.e(TAG, errorMsg);
+                        callback.onError(new Exception(errorMsg));
                     }
-                } else {
-                    callback.onError(new Exception("API Error: " + response.code()));
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing user response: " + e.getMessage(), e);
+                    callback.onError(e);
                 }
             }
 
             @Override
-            public void onFailure(Call<FriendshipResponse> call, Throwable t) {
+            public void onFailure(Call<UserResponse> call, Throwable t) {
+                Log.e(TAG, "Network error fetching user: " + (t != null ? t.getMessage() : "null"), t);
                 callback.onError(t);
             }
         });
     }
 
-    // Callback interfaces
+    public interface UsersWithStatusCallback {
+        void onSuccess(List<AccountWithStatus> users);
+        void onError(Throwable t);
+    }
+
     public interface FriendListCallback {
         void onSuccess(List<Account> friends);
         void onError(Throwable t);
@@ -395,8 +347,8 @@ public class FriendRepository {
         void onError(Throwable t);
     }
 
-    public interface UsersCallback {
-        void onSuccess(List<Account> users);
+    public interface FriendRequestCallback {
+        void onSuccess();
         void onError(Throwable t);
     }
 
@@ -405,32 +357,16 @@ public class FriendRepository {
         void onError(Throwable t);
     }
 
-    public interface FriendCallback {
-        void onSuccess(List<Friend> friends);
+    public interface UserCallback {
+        void onSuccess(Account account);
         void onError(Throwable t);
-    }
-
-    public interface FriendshipStatusCallback {
-        void onStatusChecked(FriendshipStatus status);
-    }
-
-    public interface UsersWithStatusCallback {
-        void onSuccess(List<AccountWithStatus> users);
-        void onError(Throwable t);
-    }
-
-    public enum FriendshipStatus {
-        FRIENDS,
-        PENDING,
-        NOT_FRIENDS,
-        SELF
     }
 
     public class AccountWithStatus {
-        private Account account;
-        private FriendshipStatus status;
+        private final Account account;
+        private String status;
 
-        public AccountWithStatus(Account account, FriendshipStatus status) {
+        public AccountWithStatus(Account account, String status) {
             this.account = account;
             this.status = status;
         }
@@ -439,8 +375,60 @@ public class FriendRepository {
             return account;
         }
 
-        public FriendshipStatus getStatus() {
+        public String getStatus() {
             return status;
         }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    // Block user
+    public void blockUser(String blockerId, String blockedId, SimpleCallback callback) {
+        Log.d(TAG, "Blocking user from " + (blockerId != null ? blockerId : "null") + " to " + (blockedId != null ? blockedId : "null"));
+        if (blockerId == null || blockedId == null) {
+            callback.onError(new Exception("BlockerId or blockedId is null"));
+            return;
+        }
+        apiService.blockUser(blockerId, blockedId).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess();
+                } else {
+                    callback.onError(new Exception("API Error: " + response.code()));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                callback.onError(t);
+            }
+        });
+    }
+
+    // Unblock user
+    public void unblockUser(String blockerId, String blockedId, SimpleCallback callback) {
+        Log.d(TAG, "Unblocking user from " + (blockerId != null ? blockerId : "null") + " to " + (blockedId != null ? blockedId : "null"));
+        if (blockerId == null || blockedId == null) {
+            callback.onError(new Exception("BlockerId or blockedId is null"));
+            return;
+        }
+        apiService.unblockUser(blockerId, blockedId).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess();
+                } else {
+                    callback.onError(new Exception("API Error: " + response.code()));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                callback.onError(t);
+            }
+        });
     }
 }
