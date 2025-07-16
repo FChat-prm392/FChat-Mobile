@@ -5,7 +5,7 @@ import java.util.Date;
 public class Friendship {
     private String id;  // Note: your API uses "id" not "_id"
     private Account requester;
-    private Account recipient;
+    private String recipient;
     private String requestStatus; // Your API uses "requestStatus" not "status"
     private Date createdAt;
     private Date updatedAt;
@@ -13,7 +13,7 @@ public class Friendship {
     // Constructors
     public Friendship() {}
 
-    public Friendship(String id, Account requester, Account recipient, String requestStatus, Date createdAt, Date updatedAt) {
+    public Friendship(String id, Account requester, String recipient, String requestStatus, Date createdAt, Date updatedAt) {
         this.id = id;
         this.requester = requester;
         this.recipient = recipient;
@@ -39,11 +39,11 @@ public class Friendship {
         this.requester = requester;
     }
 
-    public Account getRecipient() {
+    public String getRecipient() {
         return recipient;
     }
 
-    public void setRecipient(Account recipient) {
+    public void setRecipient(String recipient) {
         this.recipient = recipient;
     }
 
@@ -84,16 +84,6 @@ public class Friendship {
         return "declined".equals(requestStatus);
     }
 
-    /**
-     * Get the other user in this friendship (not the current user)
-     */
-    public Account getOtherUser(String currentUserId) {
-        if (requester != null && currentUserId.equals(requester.get_id())) {
-            return recipient;
-        } else {
-            return requester;
-        }
-    }
 
     /**
      * Check if current user is the requester
@@ -106,6 +96,6 @@ public class Friendship {
      * Check if current user is the recipient
      */
     public boolean isRecipient(String currentUserId) {
-        return recipient != null && currentUserId.equals(recipient.get_id());
+        return recipient != null && currentUserId != null && currentUserId.equals(recipient);
     }
 }

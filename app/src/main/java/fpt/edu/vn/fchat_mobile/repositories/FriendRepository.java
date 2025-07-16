@@ -2,6 +2,10 @@ package fpt.edu.vn.fchat_mobile.repositories;
 
 import android.util.Log;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,11 +14,13 @@ import fpt.edu.vn.fchat_mobile.models.Friend;
 import fpt.edu.vn.fchat_mobile.models.Friendship;
 import fpt.edu.vn.fchat_mobile.network.ApiClient;
 import fpt.edu.vn.fchat_mobile.requests.SendFriendRequestRequest;
+import fpt.edu.vn.fchat_mobile.requests.UpdateFriendRequestRequest; // Import from requests package
 import fpt.edu.vn.fchat_mobile.responses.AccountListResponse;
 import fpt.edu.vn.fchat_mobile.responses.FriendshipResponse;
 import fpt.edu.vn.fchat_mobile.responses.NonFriendsResponse;
 import fpt.edu.vn.fchat_mobile.responses.UserResponse;
 import fpt.edu.vn.fchat_mobile.services.ApiService;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -142,7 +148,8 @@ public class FriendRepository {
     }
 
     public void sendFriendRequest(String requesterId, String recipientId, SimpleCallback callback) {
-        Log.d(TAG, "Sending friend request from requesterId: " + (requesterId != null ? requesterId : "null") + " to recipientId: " + (recipientId != null ? recipientId : "null"));
+        Log.d(TAG, "Sending friend request from requesterId: " + (requesterId != null ? requesterId : "null") +
+                " to recipientId: " + (recipientId != null ? recipientId : "null"));
         if (requesterId == null || recipientId == null) {
             callback.onError(new Exception("RequesterId or recipientId is null"));
             return;
@@ -151,8 +158,8 @@ public class FriendRepository {
             callback.onError(new Exception("Cannot send friend request to yourself"));
             return;
         }
-        SendFriendRequestRequest request = new SendFriendRequestRequest(requesterId, recipientId);
-        Log.d(TAG, "Request object: requesterId=" + request.getRequesterId() + ", recipientId=" + request.getRecipientId());
+        SendFriendRequestRequest request = new SendFriendRequestRequest(requesterId, recipientId, "pending");
+        Log.d(TAG, "Request object: requester=" + request.getRequester() + ", recipient=" + request.getRecipient() + ", requestStatus=" + request.getRequestStatus());
         apiService.sendFriendRequest(request).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
@@ -160,7 +167,8 @@ public class FriendRepository {
                     Log.d(TAG, "Friend request sent successfully");
                     callback.onSuccess();
                 } else {
-                    String errorMsg = "API Error: " + response.code() + (response.errorBody() != null ? " - " + response.errorBody().toString() : "");
+                    String errorMsg = "API Error: " + response.code() +
+                            (response.errorBody() != null ? " - " + parseErrorBody(response.errorBody()) : "");
                     Log.e(TAG, errorMsg);
                     callback.onError(new Exception(errorMsg));
                 }
@@ -172,6 +180,23 @@ public class FriendRepository {
                 callback.onError(t);
             }
         });
+    }
+
+    private String parseErrorBody(ResponseBody errorBody) {
+        if (errorBody == null) return "No error details available";
+
+        try {
+            // Assuming the server returns a JSON object with a "message" field
+            String errorBodyString = errorBody.string();
+            JSONObject jsonObject = new JSONObject(errorBodyString);
+            return jsonObject.optString("message", "Unknown error");
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading error body: " + e.getMessage(), e);
+            return "Error reading response";
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing error body JSON: " + e.getMessage(), e);
+            return "Invalid error format";
+        }
     }
 
     public void getFriendList(String userId, FriendListCallback callback) {
@@ -217,11 +242,21 @@ public class FriendRepository {
                         callback.onSuccess(friendRequests != null ? friendRequests : new ArrayList<>());
                     } else {
                         String errorMsg = "Failed to fetch friend requests: " + response.code();
+                        if (response.errorBody() != null) {
+                            Log.e(TAG, "Raw error body: " + response.errorBody().string());
+                        }
                         Log.e(TAG, errorMsg);
                         callback.onError(new Exception(errorMsg));
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error processing friend requests response: " + e.getMessage(), e);
+                    if (e instanceof com.google.gson.JsonSyntaxException && response.errorBody() != null) {
+                        try {
+                            Log.e(TAG, "Raw response body: " + response.errorBody().string());
+                        } catch (IOException ioe) {
+                            Log.e(TAG, "Failed to read raw response: " + ioe.getMessage(), ioe);
+                        }
+                    }
                     callback.onError(e);
                 }
             }
@@ -234,20 +269,21 @@ public class FriendRepository {
         });
     }
 
-    public void acceptFriendRequest(String requestId, SimpleCallback callback) {
-        Log.d(TAG, "Accepting friend request: " + (requestId != null ? requestId : "null"));
-        if (requestId == null) {
-            callback.onError(new Exception("RequestId is null"));
+    public void updateFriendRequest(String friendshipId, UpdateFriendRequestRequest request, SimpleCallback callback) {
+        Log.d(TAG, "Updating friend request: " + (friendshipId != null ? friendshipId : "null") + " with status: " + request.getRequestStatus());
+        if (friendshipId == null) {
+            callback.onError(new Exception("FriendshipId is null"));
             return;
         }
-        apiService.acceptFriendRequest(requestId).enqueue(new Callback<Void>() {
+        apiService.updateFriendRequest(friendshipId, request).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Log.d(TAG, "Friend request accepted successfully");
+                    Log.d(TAG, "Friend request updated successfully");
                     callback.onSuccess();
                 } else {
-                    String errorMsg = "Failed to accept friend request: " + response.code();
+                    String errorMsg = "Failed to update friend request: " + response.code() +
+                            (response.errorBody() != null ? " - " + parseErrorBody(response.errorBody()) : "");
                     Log.e(TAG, errorMsg);
                     callback.onError(new Exception(errorMsg));
                 }
@@ -255,10 +291,19 @@ public class FriendRepository {
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Log.e(TAG, "Network error accepting friend request: " + (t != null ? t.getMessage() : "null"), t);
+                Log.e(TAG, "Network error updating friend request: " + (t != null ? t.getMessage() : "null"), t);
                 callback.onError(t);
             }
         });
+    }
+
+    public void acceptFriendRequest(String requestId, SimpleCallback callback) {
+        Log.d(TAG, "Accepting friend request: " + (requestId != null ? requestId : "null"));
+        if (requestId == null) {
+            callback.onError(new Exception("RequestId is null"));
+            return;
+        }
+        updateFriendRequest(requestId, new UpdateFriendRequestRequest("accepted"), callback);
     }
 
     public void declineFriendRequest(String requestId, SimpleCallback callback) {
@@ -267,25 +312,7 @@ public class FriendRepository {
             callback.onError(new Exception("RequestId is null"));
             return;
         }
-        apiService.declineFriendRequest(requestId).enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    Log.d(TAG, "Friend request declined successfully");
-                    callback.onSuccess();
-                } else {
-                    String errorMsg = "Failed to decline friend request: " + response.code();
-                    Log.e(TAG, errorMsg);
-                    callback.onError(new Exception(errorMsg));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) {
-                Log.e(TAG, "Network error declining friend request: " + (t != null ? t.getMessage() : "null"), t);
-                callback.onError(t);
-            }
-        });
+        updateFriendRequest(requestId, new UpdateFriendRequestRequest("declined"), callback);
     }
 
     public void getUserById(String userId, UserCallback callback) {
@@ -331,6 +358,9 @@ public class FriendRepository {
             }
         });
     }
+
+
+
 
     public interface UsersWithStatusCallback {
         void onSuccess(List<AccountWithStatus> users);
@@ -383,6 +413,7 @@ public class FriendRepository {
             this.status = status;
         }
     }
+
 
     // Block user
     public void blockUser(String blockerId, String blockedId, SimpleCallback callback) {
