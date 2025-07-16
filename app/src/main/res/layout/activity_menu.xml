@@ -89,6 +89,28 @@
                 android:drawablePadding="12dp" />
 
             <Button
+                android:id="@+id/btn_friend_requests"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="Lời mời kết bạn"
+                android:textColor="#000000"
+                android:drawablePadding="12dp" />
+
+            <Button
+                android:id="@+id/btn_block_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="Danh sách chặn"
+                android:textColor="#000000"
+                android:drawablePadding="12dp" />
+
+            <Button
                 android:id="@+id/btn_chat_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -1,9 +1,11 @@
 package fpt.edu.vn.fchat_mobile.adapters;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -24,12 +26,15 @@ public class SearchUserAdapter extends RecyclerView.Adapter<SearchUserAdapter.Us
     private List<FriendRepository.AccountWithStatus> users;
     private final String currentUserId;
     private final OnProfileClickListener profileClickListener;
+    private final FriendRepository friendRepository;
 
-    public SearchUserAdapter(Context context, List<FriendRepository.AccountWithStatus> users, String currentUserId, OnProfileClickListener listener) {
+    public SearchUserAdapter(Context context, List<FriendRepository.AccountWithStatus> users, String currentUserId,
+                             OnProfileClickListener listener, FriendRepository friendRepository) {
         this.context = context;
         this.users = users != null ? users : new ArrayList<>();
         this.currentUserId = currentUserId;
         this.profileClickListener = listener;
+        this.friendRepository = friendRepository;
     }
 
     public void updateUsers(List<FriendRepository.AccountWithStatus> newUsers) {
@@ -67,6 +72,40 @@ public class SearchUserAdapter extends RecyclerView.Adapter<SearchUserAdapter.Us
                 profileClickListener.onProfileClick(user.get_id());
             }
         });
+
+        // Handle "Thêm bạn" button
+        holder.addFriendButton.setEnabled(true);
+        holder.addFriendButton.setText("Thêm bạn");
+        if (!user.get_id().equals(currentUserId)) {
+            holder.addFriendButton.setOnClickListener(v -> {
+                holder.addFriendButton.setEnabled(false);
+                friendRepository.sendFriendRequest(currentUserId, user.get_id(), new FriendRepository.SimpleCallback() {
+                    @Override
+                    public void onSuccess() {
+                        holder.addFriendButton.post(() -> {
+                            holder.addFriendButton.setText("Pending");
+                        });
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        holder.addFriendButton.post(() -> {
+                            String errorMsg = t.getMessage();
+                            if (errorMsg != null && (errorMsg.contains("You already sent a request to this account") ||
+                                    errorMsg.contains("Friend request already exists"))) {
+                                holder.addFriendButton.setText("Pending");
+                            } else {
+                                holder.addFriendButton.setText("Thêm bạn");
+                                holder.addFriendButton.setEnabled(true);
+                            }
+                        });
+                        Log.e("SearchUserAdapter", "Send friend request failed", t);
+                    }
+                });
+            });
+        } else {
+            holder.addFriendButton.setVisibility(View.GONE); // Hide button for self
+        }
     }
 
     @Override
@@ -78,12 +117,14 @@ public class SearchUserAdapter extends RecyclerView.Adapter<SearchUserAdapter.Us
         ImageView avatarImageView;
         TextView fullNameTextView;
         TextView usernameTextView;
+        Button addFriendButton;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImageView = itemView.findViewById(R.id.avatar_image);
             fullNameTextView = itemView.findViewById(R.id.name_text);
             usernameTextView = itemView.findViewById(R.id.username_text);
+            addFriendButton = itemView.findViewById(R.id.add_button);
         }
     }
 

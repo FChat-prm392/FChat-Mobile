@@ -72,7 +72,7 @@ public class ProfileActivity extends AppCompatActivity {
                     usernameText.setText("@" + profileAccount.getUsername());
                     emailText.setText(profileAccount.getEmail());
                     // Load image using Picasso/Glide if available
-                    // Picasso.get().load(profileAccount.getAvatarUrl()).into(profileImage);
+                    // Picasso.get().load(profileAccount.getImageURL()).into(profileImage);
                     statusText.setText("");
                 });
             }
@@ -94,51 +94,30 @@ public class ProfileActivity extends AppCompatActivity {
             return;
         }
         addFriendButton.setEnabled(false);
-        statusText.setText("Checking status...");
-        friendRepository.getUserById(profileUserId, new UserCallback() {
+        statusText.setText("Sending friend request...");
+        friendRepository.sendFriendRequest(currentUserId, profileUserId, new SimpleCallback() {
             @Override
-            public void onSuccess(Account account) {
-                String status = "pending";
-                if ("pending".equals(status) || "accepted".equals(status)) {
-                    runOnUiThread(() -> {
-                        statusText.setText("Friend request already exists");
-                        addFriendButton.setEnabled(true);
-                    });
-                } else {
-                    statusText.setText("Sending friend request...");
-                    friendRepository.sendFriendRequest(currentUserId, profileUserId, new SimpleCallback() {
-                        @Override
-                        public void onSuccess() {
-                            runOnUiThread(() -> {
-                                statusText.setText("Friend request sent");
-                                addFriendButton.setText("Pending");
-                            });
-                        }
-
-                        @Override
-                        public void onError(Throwable t) {
-                            runOnUiThread(() -> {
-                                String errorMsg = t.getMessage();
-                                if (errorMsg != null && errorMsg.contains("Friend request already exists")) {
-                                    statusText.setText("Friend request already exists");
-                                } else {
-                                    statusText.setText("Failed to send request: " + (errorMsg != null ? errorMsg : "Unknown error"));
-                                }
-                                addFriendButton.setEnabled(true);
-                            });
-                            Log.e(TAG, "Send friend request failed", t);
-                        }
-                    });
-                }
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    statusText.setText("Friend request sent");
+                    addFriendButton.setText("Pending");
+                });
             }
 
             @Override
             public void onError(Throwable t) {
                 runOnUiThread(() -> {
-                    statusText.setText("Failed to check status: " + t.getMessage());
+                    String errorMsg = t.getMessage();
+                    Log.e(TAG, "Send friend request failed: " + (errorMsg != null ? errorMsg : "Unknown error"), t);
+                    if (errorMsg != null && errorMsg.contains("You already sent a request to this account")) {
+                        statusText.setText("You already sent a request to this account");
+                    } else if (errorMsg != null && errorMsg.contains("Friend request already exists")) {
+                        statusText.setText("You already sent a request to this account");
+                    } else {
+                        statusText.setText("Failed to send request: " + (errorMsg != null ? errorMsg : "Unknown error"));
+                    }
                     addFriendButton.setEnabled(true);
                 });
-                Log.e(TAG, "Check status failed", t);
             }
         });
     }

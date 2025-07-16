@@ -70,7 +70,7 @@ public class AddFriendActivity extends AppCompatActivity {
     }
 
     private void setupRecyclerView() {
-        adapter = new SearchUserAdapter(this, userListWithStatus, currentUserId, this::onProfileClick);
+        adapter = new SearchUserAdapter(this, userListWithStatus, currentUserId, this::onProfileClick,friendRepository);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
     }

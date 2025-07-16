@@ -71,7 +71,7 @@ public class FriendRequestFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        adapter = new FriendRequestAdapter(getContext(), friendRequestList, currentUserId);
+        adapter = new FriendRequestAdapter(getContext(), friendRequestList, currentUserId,friendRepository);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
     }

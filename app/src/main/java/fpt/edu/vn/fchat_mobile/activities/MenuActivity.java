@@ -19,7 +19,7 @@ public class MenuActivity extends AppCompatActivity {
 
     private ImageView avatarView;
     private TextView nameView;
-    private Button settingsButton, logoutButton, btnFriendList, btnAddFriend, btnChatList, btnToggleTheme;
+    private Button settingsButton, logoutButton, btnFriendList, btnAddFriend, btnChatList, btnToggleTheme, btnFriendRequests, btnBlockList;
 
     private SessionManager sessionManager;
     private boolean isDarkMode = false;
@@ -37,6 +37,8 @@ public class MenuActivity extends AppCompatActivity {
         btnAddFriend = findViewById(R.id.btn_add_friend);
         btnChatList = findViewById(R.id.btn_chat_list);
         btnToggleTheme = findViewById(R.id.btn_toggle_theme);
+        btnFriendRequests = findViewById(R.id.btn_friend_requests);
+        btnBlockList = findViewById(R.id.btn_block_list);
 
         sessionManager = new SessionManager(this);
 
@@ -60,20 +62,17 @@ public class MenuActivity extends AppCompatActivity {
         });
 
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, EditProfileActivity.class)));
-        
-        // Enhanced friend list navigation
+
         btnFriendList.setOnClickListener(v -> {
             Intent intent = new Intent(this, FriendListActivity.class);
             startActivity(intent);
         });
-        
-        // Enhanced add friend navigation  
+
         btnAddFriend.setOnClickListener(v -> {
             Intent intent = new Intent(this, AddFriendActivity.class);
             startActivity(intent);
         });
 
-        // Chat list navigation
         btnChatList.setOnClickListener(v -> {
             Intent intent = new Intent(this, ChatListActivity.class);
             startActivity(intent);
@@ -88,6 +87,16 @@ public class MenuActivity extends AppCompatActivity {
                 btnToggleTheme.setText("Chế độ hệ thống: Tối");
             }
             isDarkMode = !isDarkMode;
+        });
+
+        btnFriendRequests.setOnClickListener(v -> {
+            Intent intent = new Intent(this, AddFriendRequestActivity.class);
+            startActivity(intent);
+        });
+
+        btnBlockList.setOnClickListener(v -> {
+            Intent intent = new Intent(this, BlockListActivity.class);
+            startActivity(intent);
         });
     }
 

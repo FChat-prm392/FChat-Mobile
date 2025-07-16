@@ -155,7 +155,7 @@ public interface ApiService {
     @GET("api/friends/{userId}")
     Call<List<Friend>> getFriends(@Path("userId") String userId);
 
-    @GET("api/friend-requests/{userId}")
+    @GET("api/friendships/requests/{userId}")
     Call<FriendshipResponse> getFriendRequests(@Path("userId") String userId); // Changed to FriendshipResponse
 
     @POST("api/friend-requests/{requestId}/accept")
