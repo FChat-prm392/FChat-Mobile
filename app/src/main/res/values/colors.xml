@@ -13,4 +13,9 @@
     <color name="colorPrimary">#FF2196F3</color>
     <color name="colorPrimaryDark">#FF1976D2</color>
     <color name="colorAccent">#FF4CAF50</color>
+    
+    <!-- App theme colors -->
+    <color name="primary_color">#667eea</color>
+    <color name="primary_dark">#5a67d8</color>
+    <color name="accent_color">#764ba2</color>
 </resources>
