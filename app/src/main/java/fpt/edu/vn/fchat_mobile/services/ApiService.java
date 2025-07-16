@@ -18,12 +18,14 @@ import fpt.edu.vn.fchat_mobile.requests.UpdateFriendRequestRequest;
 import fpt.edu.vn.fchat_mobile.responses.AccountListResponse;
 import fpt.edu.vn.fchat_mobile.responses.FriendshipResponse;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
+import fpt.edu.vn.fchat_mobile.responses.NonFriendsResponse;
 import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
 import fpt.edu.vn.fchat_mobile.responses.ChatResponse;
 import fpt.edu.vn.fchat_mobile.responses.MessageResponse;
 import fpt.edu.vn.fchat_mobile.responses.SendMessageResponse;
 
 import fpt.edu.vn.fchat_mobile.responses.UpdateUserResponse;
+import fpt.edu.vn.fchat_mobile.responses.UserResponse;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.http.Body;
@@ -92,18 +94,10 @@ public interface ApiService {
     Call<SendMessageResponse> sendMessage(@Body SendMessageRequest request);
 
     // ✅ FRIENDSHIP ENDPOINTS (Updated to match your existing server API)
-    
-    // Send friend request
-    @POST("api/friendships")
-    Call<Void> sendFriendRequest(@Body SendFriendRequestRequest request);
 
     // Update friend request status (accept/decline)
     @PUT("api/friendships/{id}")
     Call<Void> updateFriendRequest(@Path("id") String friendshipId, @Body UpdateFriendRequestRequest request);
-
-    // Get pending friend requests for a user
-    @GET("api/friendships/requests/{userId}")
-    Call<FriendshipResponse> getFriendRequests(@Path("userId") String userId);
 
     // Get all friendships for a user  
     @GET("api/friendships/friends/{userId}")
@@ -121,9 +115,6 @@ public interface ApiService {
     @GET("api/accounts/search")
     Call<AccountListResponse> searchUsers(@Query("q") String query);
 
-    // ✅ EXISTING ENDPOINTS (keeping for backward compatibility)
-    @GET("api/friends/{userId}")
-    Call<List<Friend>> getFriends(@Path("userId") String userId);
 
     @POST("api/friend-requests")
     Call<Void> sendFriendRequest(
@@ -149,5 +140,34 @@ public interface ApiService {
     @GET("api/messages/{messageId}/reactions")
     Call<List<MessageReaction>> getMessageReactions(@Path("messageId") String messageId);
 
+    @GET("api/accounts/non-friends")
+    Call<NonFriendsResponse> getNonFriends(@Query("userId") String userId);
+
+    @GET("api/accounts/search")
+    Call<List<UserResponse>> searchUsers(@Query("q") String query, @Query("userId") String userId);
+
+    @GET("api/accounts/{userId}")
+    Call<UserResponse> getUserById(@Path("userId") String userId);
+
+    @POST("api/friendships")
+    Call<Void> sendFriendRequest(@Body SendFriendRequestRequest body);
+
+    @GET("api/friends/{userId}")
+    Call<List<Friend>> getFriends(@Path("userId") String userId);
+
+    @GET("api/friend-requests/{userId}")
+    Call<FriendshipResponse> getFriendRequests(@Path("userId") String userId); // Changed to FriendshipResponse
+
+    @POST("api/friend-requests/{requestId}/accept")
+    Call<Void> acceptFriendRequest(@Path("requestId") String requestId);
+
+    @POST("api/friend-requests/{requestId}/decline")
+    Call<Void> declineFriendRequest(@Path("requestId") String requestId);
+
+    @POST("api/block")
+    Call<Void> blockUser(@Query("blockerId") String blockerId, @Query("blockedId") String blockedId);
+
+    @DELETE("api/block")
+    Call<Void> unblockUser(@Query("blockerId") String blockerId, @Query("blockedId") String blockedId);
 
 }
