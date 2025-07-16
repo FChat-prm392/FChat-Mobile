@@ -260,6 +260,14 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
             public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
                 // Handle video status (if needed in chat list)
             }
+            
+            @Override
+            public void onVoiceDataReceived(String audioData, String senderId) {
+            }
+            
+            @Override
+            public void onVideoDataReceived(String videoData, String senderId) {
+            }
         });
     }
 
