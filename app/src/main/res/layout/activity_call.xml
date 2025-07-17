@@ -2,6 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="#1a1a1a">
 
     <!-- Video Container (for video calls) -->
@@ -48,15 +49,16 @@
     </FrameLayout>
 
     <!-- Avatar (for voice calls) -->
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/call_avatar"
         android:layout_width="150dp"
         android:layout_height="150dp"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="120dp"
-        android:background="@drawable/circle_background"
         android:scaleType="centerCrop"
-        android:src="@drawable/ic_avatar" />
+        android:src="@drawable/ic_avatar"
+        app:shapeAppearanceOverlay="@style/CircleImageView" />
+
 
     <!-- Speaking Indicator -->
     <View

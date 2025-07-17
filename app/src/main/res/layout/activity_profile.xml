@@ -47,14 +47,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Add Friend"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="8dp"
+            android:backgroundTint="#d62976"/>
 
         <Button
             android:id="@+id/btnBlock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Block"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="8dp"
+            android:backgroundTint="#d62976"/>
     </LinearLayout>
 
     <TextView
