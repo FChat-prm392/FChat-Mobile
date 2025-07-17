@@ -72,7 +72,10 @@ dependencies {
     
     // FlexboxLayout for reaction display
     implementation("com.google.android.flexbox:flexbox:3.0.0")
-    
+
+    implementation("com.google.android.material:material:1.12.0")
+
+
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
