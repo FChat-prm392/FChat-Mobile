@@ -111,6 +111,17 @@
                 android:drawablePadding="12dp" />
 
             <Button
+                android:id="@+id/btn_ai_chat"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:backgroundTint="#EEEEEE"
+                android:gravity="center|start"
+                android:text="AI Chat"
+                android:textColor="#000000"
+                android:drawablePadding="12dp" />
+
+            <Button
                 android:id="@+id/btn_chat_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

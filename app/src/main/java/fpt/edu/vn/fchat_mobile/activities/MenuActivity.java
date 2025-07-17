@@ -19,7 +19,7 @@ public class MenuActivity extends AppCompatActivity {
 
     private ImageView avatarView;
     private TextView nameView;
-    private Button settingsButton, logoutButton, btnFriendList, btnAddFriend, btnChatList, btnToggleTheme, btnFriendRequests, btnBlockList;
+    private Button settingsButton, logoutButton, btnFriendList, btnAddFriend, btnChatList, btnToggleTheme, btnFriendRequests, btnBlockList, btnAIChat;
 
     private SessionManager sessionManager;
     private boolean isDarkMode = false;
@@ -39,6 +39,7 @@ public class MenuActivity extends AppCompatActivity {
         btnToggleTheme = findViewById(R.id.btn_toggle_theme);
         btnFriendRequests = findViewById(R.id.btn_friend_requests);
         btnBlockList = findViewById(R.id.btn_block_list);
+        btnAIChat = findViewById(R.id.btn_ai_chat);
 
         sessionManager = new SessionManager(this);
 
@@ -96,6 +97,11 @@ public class MenuActivity extends AppCompatActivity {
 
         btnBlockList.setOnClickListener(v -> {
             Intent intent = new Intent(this, BlockListActivity.class);
+            startActivity(intent);
+        });
+
+        btnAIChat.setOnClickListener(v -> {
+            Intent intent = new Intent(this, AIChatActivity.class);
             startActivity(intent);
         });
     }

@@ -462,4 +462,58 @@ public class FriendRepository {
             }
         });
     }
+
+    public void getBlockedUsers(String userId, BlockedUsersCallback callback) {
+        Log.d(TAG, "Fetching blocked users for user: " + (userId != null ? userId : "null"));
+        if (userId == null) {
+            callback.onError(new Exception("UserId is null"));
+            return;
+        }
+        apiService.getBlockedUsers(userId).enqueue(new Callback<AccountListResponse>() {
+            @Override
+            public void onResponse(Call<AccountListResponse> call, Response<AccountListResponse> response) {
+                try {
+                    if (response.isSuccessful() && response.body() != null) {
+                        List<Account> blockedUsers = response.body().getData();
+                        Log.d(TAG, "Fetched " + (blockedUsers != null ? blockedUsers.size() : 0) + " blocked users");
+                        callback.onSuccess(blockedUsers != null ? blockedUsers : new ArrayList<>());
+                    } else {
+                        String errorMsg = "Failed to fetch blocked users: " + response.code();
+                        if (response.errorBody() != null) {
+                            try {
+                                Log.e(TAG, "Raw error body: " + response.errorBody().string());
+                            } catch (IOException e) {
+                                Log.e(TAG, "Failed to read error body: " + e.getMessage(), e);
+                            }
+                        }
+                        Log.e(TAG, errorMsg);
+                        callback.onError(new Exception(errorMsg));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing blocked users response: " + e.getMessage(), e);
+                    if (e instanceof com.google.gson.JsonSyntaxException && response.errorBody() != null) {
+                        try {
+                            Log.e(TAG, "Raw response body: " + response.errorBody().string());
+                        } catch (IOException ioe) {
+                            Log.e(TAG, "Failed to read raw response: " + ioe.getMessage(), ioe);
+                        }
+                    }
+                    callback.onError(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<AccountListResponse> call, Throwable t) {
+                Log.e(TAG, "Network error fetching blocked users: " + (t != null ? t.getMessage() : "null"), t);
+                callback.onError(t);
+            }
+        });
+    }
+
+    // [Other interfaces and methods omitted for brevity]
+
+    public interface BlockedUsersCallback {
+        void onSuccess(List<Account> blockedUsers);
+        void onError(Throwable t);
+    }
 }
