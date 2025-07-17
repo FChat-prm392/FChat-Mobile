@@ -11,12 +11,14 @@ import fpt.edu.vn.fchat_mobile.models.MessageReaction;
 import fpt.edu.vn.fchat_mobile.models.UserStatus;
 import fpt.edu.vn.fchat_mobile.requests.GoogleLoginRequest;
 import fpt.edu.vn.fchat_mobile.requests.LoginRequest;
+import fpt.edu.vn.fchat_mobile.requests.MessageRequest;
 import fpt.edu.vn.fchat_mobile.requests.RegisterRequest;
 import fpt.edu.vn.fchat_mobile.requests.SendFriendRequestRequest;
 import fpt.edu.vn.fchat_mobile.requests.SendMessageRequest;
 import fpt.edu.vn.fchat_mobile.requests.UpdateFriendRequestRequest;
 import fpt.edu.vn.fchat_mobile.responses.AccountListResponse;
 import fpt.edu.vn.fchat_mobile.responses.FriendshipResponse;
+import fpt.edu.vn.fchat_mobile.responses.GeminiResponse;
 import fpt.edu.vn.fchat_mobile.responses.LoginResponse;
 import fpt.edu.vn.fchat_mobile.responses.NonFriendsResponse;
 import fpt.edu.vn.fchat_mobile.responses.RegisterResponse;
@@ -169,5 +171,11 @@ public interface ApiService {
 
     @DELETE("api/block")
     Call<Void> unblockUser(@Query("blockerId") String blockerId, @Query("blockedId") String blockedId);
+
+    @POST("api/gemini/chat")
+    Call<GeminiResponse> askGemini(@Body MessageRequest message);
+
+    @GET("api/friend-requests/{requestId}")
+    Call<AccountListResponse> getBlockedUsers(@Path("userId") String userId);
 
 }
