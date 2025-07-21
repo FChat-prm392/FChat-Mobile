@@ -1,9 +1,12 @@
 package fpt.edu.vn.fchat_mobile.responses;
 
+import com.google.gson.annotations.SerializedName;
+
 public class GeminiResponse {
+    @SerializedName("reply")
     private String text;
-    public String getText() { return text; }
-    public void setText(String text) { this.text = text; }
+
+    public String getText() {
+        return text;
+    }
 }
-
-
