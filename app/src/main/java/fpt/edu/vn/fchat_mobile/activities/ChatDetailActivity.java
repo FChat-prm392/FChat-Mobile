@@ -149,6 +149,10 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         SocketManager.initializeSocket();
         SocketManager.setupMessageStatusListeners(this);
         setupCallListeners();
+        
+        // Add debug logging
+        fpt.edu.vn.fchat_mobile.utils.SocketDebugger.enableDebugLogging();
+        fpt.edu.vn.fchat_mobile.utils.SocketDebugger.checkSocketStatus();
 
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
@@ -238,6 +242,9 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     @Override
     protected void onResume() {
         super.onResume();
+        
+        // Check socket status and reconnect if needed
+        fpt.edu.vn.fchat_mobile.utils.SocketDebugger.checkSocketStatus();
         
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
@@ -377,12 +384,16 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
                     String messageId = messageResponse.getId();
                     
                     if (messageId != null && !messageId.isEmpty()) {
+                        Log.d(TAG, "🚀 SENDING MESSAGE - ID: " + messageId + ", Content: '" + content + "', Chat: " + chatId);
+                        
                         SocketManager.emitMessageSent(messageId, chatId, userId);
                         
                         try {
                             String currentUserName = sessionManager.getCurrentUserUsername();
+                            Log.d(TAG, "🚀 EMITTING REALTIME MESSAGE - User: " + currentUserName);
                             SocketManager.emitRealtimeMessage(messageId, content, userId, currentUserName, chatId);
                         } catch (Exception e) {
+                            Log.e(TAG, "Error emitting realtime message", e);
                         }
                         
                         String formattedTime = formatMessageTime(null);
@@ -515,20 +526,27 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
     
     @Override
     public void onNewMessageReceived(String messageId, String content, String senderId, String senderName, String chatId, String timestamp) {
+        Log.d(TAG, "📥 RECEIVED MESSAGE - ID: " + messageId + ", From: " + senderName + " (" + senderId + "), Chat: " + chatId + ", ThisChat: " + this.chatId);
+        
         if (!chatId.equals(this.chatId)) {
+            Log.d(TAG, "📥 MESSAGE NOT FOR THIS CHAT - Ignoring");
             return;
         }
         
         String currentUserId = sessionManager.getCurrentUserId();
         if (senderId.equals(currentUserId)) {
+            Log.d(TAG, "📥 MESSAGE FROM SELF - Ignoring");
             return;
         }
         
         for (MessageItem existingMessage : messageList) {
             if (messageId.equals(existingMessage.getMessageId())) {
+                Log.d(TAG, "📥 DUPLICATE MESSAGE DETECTED - ID: " + messageId + " already exists");
                 return;
             }
         }
+        
+        Log.d(TAG, "📥 PROCESSING NEW MESSAGE - Adding to list");
         
         runOnUiThread(() -> {
             try {

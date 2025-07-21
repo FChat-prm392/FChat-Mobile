@@ -109,6 +109,10 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
             socket = SocketManager.getSocket();
         }
 
+        // Add debug logging for chat list
+        Log.d(TAG, "🔧 CHAT LIST: Setting up socket listeners");
+        fpt.edu.vn.fchat_mobile.utils.SocketDebugger.checkSocketStatus();
+
         // Setup chat list listeners for real-time updates
         SocketManager.setupChatListListeners(this);
         

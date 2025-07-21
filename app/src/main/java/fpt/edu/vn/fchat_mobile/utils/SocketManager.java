@@ -20,20 +20,20 @@ public class SocketManager {
                 opts.reconnectionAttempts = Integer.MAX_VALUE;
                 opts.reconnectionDelay = 1000;
                 socket = IO.socket(SERVER_URL, opts);
-                
+
                 // Add connection event listeners for debugging
                 socket.on(Socket.EVENT_CONNECT, args -> {
                     Log.d(TAG, "🔌 SOCKET CONNECTED to " + SERVER_URL);
                 });
-                
+
                 socket.on(Socket.EVENT_DISCONNECT, args -> {
                     Log.d(TAG, "🔌 SOCKET DISCONNECTED");
                 });
-                
+
                 socket.on(Socket.EVENT_CONNECT_ERROR, args -> {
                     Log.e(TAG, "🔌 SOCKET CONNECTION ERROR: " + (args.length > 0 ? args[0].toString() : "Unknown"));
                 });
-                
+
                 socket.connect();
                 Log.d(TAG, "Socket initialized and connecting to " + SERVER_URL);
             } catch (Exception e) {
@@ -62,24 +62,24 @@ public class SocketManager {
             Log.d(TAG, "Emitted user-logout for user: " + userId);
         }
     }
-    
+
     public static void joinRoom(String chatId) {
         if (socket != null && socket.connected()) {
             socket.emit("join-room", chatId);
             Log.d(TAG, "Joined room: " + chatId);
         }
     }
-    
+
     public static void registerUser(String userId) {
         if (socket != null && socket.connected()) {
             socket.emit("register-user", userId);
             Log.d(TAG, "Registered user: " + userId);
-            
+
             // Request status sync for offline period
             requestStatusSync(userId);
         }
     }
-    
+
     // Request status sync for messages sent while offline
     public static void requestStatusSync(String userId) {
         if (socket != null && socket.connected()) {
@@ -94,7 +94,7 @@ public class SocketManager {
             }
         }
     }
-    
+
     // Request status sync for a specific chat
     public static void requestChatStatusSync(String chatId, String userId) {
         if (socket != null && socket.connected()) {
@@ -162,7 +162,7 @@ public class SocketManager {
             }
         }
     }
-    
+
     // Emit real-time message for immediate delivery to other users in the chat
     public static void emitRealtimeMessage(String messageId, String content, String senderId, String senderName, String chatId) {
         if (socket != null && socket.connected()) {
@@ -259,7 +259,7 @@ public class SocketManager {
                     Log.e(TAG, "Unexpected error in message-status-update", e);
                 }
             });
-            
+
             // Listen for bulk status sync completion
             socket.on("status-sync-complete", args -> {
                 try {
@@ -267,11 +267,11 @@ public class SocketManager {
                     int syncCount = data.optInt("count", 0);
                     String userId = data.optString("userId", "");
                     String chatId = data.optString("chatId", "");
-                    
-                    Log.d(TAG, "📥 STATUS SYNC COMPLETE - User: " + userId + 
-                               ", Chat: " + (chatId.isEmpty() ? "ALL" : chatId) + 
-                               ", Synced: " + syncCount + " messages");
-                    
+
+                    Log.d(TAG, "📥 STATUS SYNC COMPLETE - User: " + userId +
+                            ", Chat: " + (chatId.isEmpty() ? "ALL" : chatId) +
+                            ", Synced: " + syncCount + " messages");
+
                     if (syncCount > 0) {
                         listener.onBulkStatusSync(syncCount);
                         Log.d(TAG, "✅ Notified UI about " + syncCount + " status updates");
@@ -282,7 +282,7 @@ public class SocketManager {
                     Log.e(TAG, "Error parsing status-sync-complete", e);
                 }
             });
-            
+
             // Listen for sync errors
             socket.on("sync-error", args -> {
                 try {
@@ -317,7 +317,7 @@ public class SocketManager {
                     Log.e(TAG, "Error parsing user-chat-presence", e);
                 }
             });
-            
+
             // Listen for incoming messages in real-time
             socket.on("receive-message", args -> {
                 try {
@@ -328,18 +328,18 @@ public class SocketManager {
                     String senderName = data.optString("senderName", "");
                     String chatId = data.optString("chatID", "");
                     String timestamp = data.optString("timestamp", "");
-                    
-                    Log.d(TAG, "📥 RECEIVED real-time message - ID: " + messageId + 
-                               ", From: " + senderName + " (" + senderId + ")" +
-                               ", Chat: " + chatId + 
-                               ", Content: '" + content + "'");
-                    
+
+                    Log.d(TAG, "📥 RECEIVED real-time message - ID: " + messageId +
+                            ", From: " + senderName + " (" + senderId + ")" +
+                            ", Chat: " + chatId +
+                            ", Content: '" + content + "'");
+
                     listener.onNewMessageReceived(messageId, content, senderId, senderName, chatId, timestamp);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing receive-message", e);
                 }
             });
-            
+
             // Listen for real-time reactions
             socket.on("reaction-added", args -> {
                 try {
@@ -348,9 +348,9 @@ public class SocketManager {
                     String userId = data.getString("userId");
                     String userName = data.getString("userName");
                     String emoji = data.getString("emoji");
-                    
+
                     Log.d(TAG, "😊 RECEIVED reaction-added - Message: " + messageId + ", User: " + userName + ", Emoji: " + emoji);
-                    
+
                     listener.onReactionAdded(messageId, userId, userName, emoji);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing reaction-added", e);
@@ -364,15 +364,15 @@ public class SocketManager {
                     String userId = data.getString("userId");
                     String userName = data.getString("userName");
                     String emoji = data.getString("emoji");
-                    
+
                     Log.d(TAG, "😔 RECEIVED reaction-removed - Message: " + messageId + ", User: " + userName + ", Emoji: " + emoji);
-                    
+
                     listener.onReactionRemoved(messageId, userId, userName, emoji);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing reaction-removed", e);
                 }
             });
-            
+
             Log.d(TAG, "✅ Socket event listeners setup complete");
         }
     }
@@ -388,17 +388,17 @@ public class SocketManager {
                     String lastMessage = data.optString("lastMessage", "");
                     String senderName = data.optString("senderName", "");
                     String timestamp = data.optString("timestamp", "");
-                    
-                    Log.d(TAG, "📋 CHAT LIST UPDATE - Chat: " + chatId + 
-                               ", Message: '" + lastMessage + "'" +
-                               ", From: " + senderName);
-                    
+
+                    Log.d(TAG, "📋 CHAT LIST UPDATE - Chat: " + chatId +
+                            ", Message: '" + lastMessage + "'" +
+                            ", From: " + senderName);
+
                     listener.onChatListMessageUpdate(chatId, lastMessage, senderName, timestamp);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing chat-list-update", e);
                 }
             });
-            
+
             Log.d(TAG, "✅ Chat list listeners setup complete");
         }
     }
@@ -413,7 +413,7 @@ public class SocketManager {
         void onReactionAdded(String messageId, String userId, String userName, String emoji);
         void onReactionRemoved(String messageId, String userId, String userName, String emoji);
     }
-    
+
     // Interface for handling chat list updates
     public interface ChatListListener {
         void onChatListMessageUpdate(String chatId, String lastMessage, String senderName, String timestamp);
@@ -532,9 +532,9 @@ public class SocketManager {
                     String callerName = data.optString("callerName", "Unknown Caller");
                     boolean isVideoCall = data.getBoolean("isVideoCall");
                     long timestamp = data.getLong("timestamp");
-                    
+
                     Log.d(TAG, "📲 INCOMING CALL - From: " + callerName + " (" + callerId + "), Video: " + isVideoCall);
-                    
+
                     listener.onIncomingCall(callId, chatId, callerId, callerName, isVideoCall, timestamp);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing incoming-call", e);
@@ -547,9 +547,9 @@ public class SocketManager {
                     JSONObject data = (JSONObject) args[0];
                     String callId = data.getString("callId");
                     long timestamp = data.getLong("timestamp");
-                    
+
                     Log.d(TAG, "✅ CALL ANSWERED - Call ID: " + callId);
-                    
+
                     listener.onCallAnswered(callId, timestamp);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing call-answered", e);
@@ -562,9 +562,9 @@ public class SocketManager {
                     JSONObject data = (JSONObject) args[0];
                     String callId = data.getString("callId");
                     long timestamp = data.getLong("timestamp");
-                    
+
                     Log.d(TAG, "❌ CALL DECLINED - Call ID: " + callId);
-                    
+
                     listener.onCallDeclined(callId, timestamp);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing call-declined", e);
@@ -577,9 +577,9 @@ public class SocketManager {
                     JSONObject data = (JSONObject) args[0];
                     String callId = data.getString("callId");
                     long timestamp = data.getLong("timestamp");
-                    
+
                     Log.d(TAG, "📞 CALL ENDED - Call ID: " + callId);
-                    
+
                     listener.onCallEnded(callId, timestamp);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing call-ended", e);
@@ -592,9 +592,9 @@ public class SocketManager {
                     JSONObject data = (JSONObject) args[0];
                     String callId = data.getString("callId");
                     String reason = data.optString("reason", "Unknown error");
-                    
+
                     Log.d(TAG, "❌ CALL FAILED - Call ID: " + callId + ", Reason: " + reason);
-                    
+
                     listener.onCallFailed(callId, reason);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing call-failed", e);
@@ -608,9 +608,9 @@ public class SocketManager {
                     String callId = data.getString("callId");
                     String userId = data.getString("userId");
                     boolean isMuted = data.getBoolean("isMuted");
-                    
+
                     Log.d(TAG, "🔇 CALL MUTE STATUS - Call ID: " + callId + ", User: " + userId + ", Muted: " + isMuted);
-                    
+
                     listener.onCallMuteStatus(callId, userId, isMuted);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing call-mute-status", e);
@@ -624,15 +624,15 @@ public class SocketManager {
                     String callId = data.getString("callId");
                     String userId = data.getString("userId");
                     boolean isVideoOn = data.getBoolean("isVideoOn");
-                    
+
                     Log.d(TAG, "📹 CALL VIDEO STATUS - Call ID: " + callId + ", User: " + userId + ", Video: " + isVideoOn);
-                    
+
                     listener.onCallVideoStatus(callId, userId, isVideoOn);
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing call-video-status", e);
                 }
             });
-            
+
             Log.d(TAG, "✅ Call listeners setup complete");
         }
     }
@@ -649,7 +649,7 @@ public class SocketManager {
         void onVoiceDataReceived(String audioData, String senderId);
         void onVideoDataReceived(String videoData, String senderId);
     }
-    
+
     // Voice streaming methods
     public static void emitVoiceData(String audioData, String chatId, String userId) {
         if (socket != null && socket.connected()) {
@@ -667,7 +667,7 @@ public class SocketManager {
             Log.w(TAG, "Cannot emit voice data - socket not connected");
         }
     }
-    
+
     public static void emitVideoData(String videoData, String chatId, String userId) {
         if (socket != null && socket.connected()) {
             try {
@@ -685,28 +685,28 @@ public class SocketManager {
             Log.w(TAG, "Cannot emit video data - socket not connected");
         }
     }
-    
+
     public static void setupVoiceListeners(CallListener listener) {
         if (socket == null || listener == null) return;
-        
+
         socket.on("voice-data", args -> {
             try {
                 JSONObject data = (JSONObject) args[0];
                 String audioData = data.getString("audioData");
                 String senderId = data.getString("userId");
-                
+
                 listener.onVoiceDataReceived(audioData, senderId);
             } catch (Exception e) {
                 Log.e(TAG, "Error processing voice data", e);
             }
         });
-        
+
         socket.on("video-data", args -> {
             try {
                 JSONObject data = (JSONObject) args[0];
                 String videoData = data.getString("videoData");
                 String senderId = data.getString("userId");
-                
+
                 listener.onVideoDataReceived(videoData, senderId);
             } catch (Exception e) {
                 Log.e(TAG, "Error processing video data", e);
@@ -732,7 +732,7 @@ public class SocketManager {
             }
         }
     }
-    
+
     public static void emitReactionRemoved(String messageId, String chatId, String userId, String userName, String emoji) {
         if (socket != null && socket.connected()) {
             try {
