@@ -389,6 +389,10 @@ public class SocketManager {
     public static void registerUserForAutoLogin(String userId) {
         Log.d(TAG, "🔑 AUTO-LOGIN: Starting registration for auto-login user: " + userId);
         
+        // Set current user immediately to prevent race conditions
+        currentUserId = userId;
+        registrationVerified = false; // Reset verification status
+        
         // Initialize socket if needed
         if (socket == null) {
             Log.d(TAG, "🔄 AUTO-LOGIN: Socket null, initializing...");
@@ -407,11 +411,14 @@ public class SocketManager {
                     registerUser(userId);
                 } else {
                     Log.e(TAG, "❌ AUTO-LOGIN: Failed to connect socket for auto-login");
-                    // Retry once more
+                    // Retry once more with forced connection
                     new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                         ensureConnection();
                         if (socket != null && socket.connected()) {
+                            Log.d(TAG, "🔁 AUTO-LOGIN: Retry successful, registering user");
                             registerUser(userId);
+                        } else {
+                            Log.e(TAG, "❌ AUTO-LOGIN: Final retry failed");
                         }
                     }, 2000);
                 }
@@ -421,6 +428,14 @@ public class SocketManager {
             Log.d(TAG, "✅ AUTO-LOGIN: Socket ready, registering user immediately");
             registerUser(userId);
         }
+        
+        // Additional safety measure: Force verification after registration
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (!registrationVerified && currentUserId != null && currentUserId.equals(userId)) {
+                Log.w(TAG, "⚠️ AUTO-LOGIN: Registration not verified after 3 seconds, forcing verification");
+                verifyRegistration();
+            }
+        }, 3000);
     }
     
     // Check if a user is online before initiating calls
@@ -598,6 +613,69 @@ public class SocketManager {
                 }
             }
         });
+    }
+    
+    // Method specifically for call verification - waits for proper registration
+    public static void verifyRegistrationForCall(String userId, RegistrationVerificationCallback callback) {
+        Log.d(TAG, "📞 CALL VERIFICATION: Starting registration verification for calls");
+        Log.d(TAG, "  • User ID: " + userId);
+        Log.d(TAG, "  • Current Socket User: " + currentUserId);
+        Log.d(TAG, "  • Registration Verified: " + registrationVerified);
+        
+        // Check if already properly registered
+        if (registrationVerified && userId.equals(currentUserId) && socket != null && socket.connected()) {
+            Log.d(TAG, "✅ CALL VERIFICATION: Already properly registered");
+            if (callback != null) {
+                callback.onVerificationResult(true, "Already registered");
+            }
+            return;
+        }
+        
+        // Force registration for auto-login scenarios
+        Log.d(TAG, "🔄 CALL VERIFICATION: Forcing registration for call");
+        registerUserForAutoLogin(userId);
+        
+        // Wait and verify with timeout
+        final int[] attempts = {0};
+        final int maxAttempts = 10; // 10 attempts = 5 seconds
+        
+        android.os.Handler verificationHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        Runnable verificationRunnable = new Runnable() {
+            @Override
+            public void run() {
+                attempts[0]++;
+                boolean isVerified = registrationVerified && userId.equals(currentUserId) && socket != null && socket.connected();
+                
+                Log.d(TAG, "🔍 CALL VERIFICATION: Attempt " + attempts[0] + "/" + maxAttempts + 
+                          " - Verified: " + isVerified);
+                
+                if (isVerified) {
+                    Log.d(TAG, "✅ CALL VERIFICATION: Registration verified successfully");
+                    if (callback != null) {
+                        callback.onVerificationResult(true, "Registration verified");
+                    }
+                } else if (attempts[0] >= maxAttempts) {
+                    Log.e(TAG, "❌ CALL VERIFICATION: Timeout after " + maxAttempts + " attempts");
+                    String error = "Registration timeout. Socket: " + (socket != null ? "exists" : "null") + 
+                                  ", Connected: " + (socket != null ? socket.connected() : false) + 
+                                  ", Verified: " + registrationVerified + 
+                                  ", UserMatch: " + userId.equals(currentUserId);
+                    if (callback != null) {
+                        callback.onVerificationResult(false, error);
+                    }
+                } else {
+                    // Continue checking
+                    verificationHandler.postDelayed(this, 500);
+                }
+            }
+        };
+        
+        verificationHandler.postDelayed(verificationRunnable, 500);
+    }
+    
+    // Interface for registration verification callback specifically for calls
+    public interface RegistrationVerificationCallback {
+        void onVerificationResult(boolean isVerified, String message);
     }
     
     private static void proceedWithSocketDiagnostics(String userId) {

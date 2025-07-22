@@ -298,61 +298,42 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
             return;
         }
         
-        // Print complete socket state for debugging
-        Log.d("CallActivity", "🔍 Printing socket state before readiness check:");
-        SocketManager.printSocketState();
+        // CRITICAL: Use enhanced registration verification for calls
+        // This specifically handles app restart and auto-login scenarios
+        Log.d("CallActivity", "CALL REGISTRATION: Verifying user registration for calls");
+        statusText.setText("Verifying connection...");
         
-        // First check if we're ready for calls
-        boolean ready = SocketManager.isReadyForCalls();
-        Log.d("CallActivity", "📋 Call readiness result: " + ready);
-        
-        if (!ready) {
-            Log.w("CallActivity", "⚠️ Not ready for calls, running diagnostics...");
-            statusText.setText("Connecting...");
-            
-            // Run comprehensive diagnostics
-            SocketManager.performConnectionDiagnostics(currentUserId);
-            
-            // Try to fix connection issues
-            SocketManager.ensureConnection();
-            SocketManager.forceRegistrationCheck();
-            
-            // Wait longer and retry with more detailed feedback
-            new android.os.Handler().postDelayed(() -> {
-                Log.d("CallActivity", "🔁 Retry check after 5 seconds:");
-                SocketManager.printSocketState();
+        SocketManager.verifyRegistrationForCall(currentUserId, new SocketManager.RegistrationVerificationCallback() {
+            @Override
+            public void onVerificationResult(boolean isVerified, String message) {
+                Log.d("CallActivity", "CALL VERIFICATION RESULT: " + isVerified + " - " + message);
                 
-                if (SocketManager.isReadyForCalls()) {
-                    Log.d("CallActivity", "✅ Connection restored, proceeding with call");
-                    proceedWithCallInitiation();
-                } else {
-                    Log.e("CallActivity", "❌ Connection diagnostics failed after retry");
+                if (isVerified) {
+                    // Perfect! Registration verified - proceed with call
                     runOnUiThread(() -> {
+                        Log.d("CallActivity", "Registration verified - proceeding with Messenger-style call");
+                        statusText.setText("Calling...");
+                        proceedWithCallInitiation();
+                    });
+                } else {
+                    // Registration failed - show error
+                    runOnUiThread(() -> {
+                        Log.e("CallActivity", "Registration verification failed: " + message);
                         statusText.setText("Connection failed");
                         
-                        // Show detailed error message
-                        String errorMsg;
-                        if (!SocketManager.isConnected()) {
-                            errorMsg = "Unable to connect to server. Please check your internet connection and try again.";
-                            Log.e("CallActivity", "❌ Socket not connected");
-                        } else if (!SocketManager.isRegistrationVerified()) {
-                            errorMsg = "Registration failed. Please restart the app and try again.";
-                            Log.e("CallActivity", "❌ Registration not verified");
+                        String userMessage;
+                        if (message.toLowerCase().contains("timeout")) {
+                            userMessage = "Connection timeout. Please check your internet and try again.";
                         } else {
-                            errorMsg = "Connection error. Please check your internet and try again.";
-                            Log.e("CallActivity", "❌ Unknown connection error");
+                            userMessage = "Unable to connect. Please restart the app and try again.";
                         }
                         
-                        android.widget.Toast.makeText(CallActivity.this, errorMsg, android.widget.Toast.LENGTH_LONG).show();
+                        android.widget.Toast.makeText(CallActivity.this, userMessage, android.widget.Toast.LENGTH_LONG).show();
                         endCall();
                     });
                 }
-            }, 5000); // Wait 5 seconds for connection to establish
-            return;
-        }
-        
-        Log.d("CallActivity", "✅ Ready for calls, proceeding immediately");
-        proceedWithCallInitiation();
+            }
+        });
     }
     
     private void proceedWithCallInitiation() {
