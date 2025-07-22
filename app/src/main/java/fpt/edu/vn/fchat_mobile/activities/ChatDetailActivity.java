@@ -150,24 +150,54 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         SocketManager.setupMessageStatusListeners(this);
         setupCallListeners();
         
+        // Set up registration callback to proceed once verified
+        SocketManager.setRegistrationCallback(new SocketManager.RegistrationCallback() {
+            @Override
+            public void onRegistrationVerified(String userId, boolean isVerified) {
+                Log.d(TAG, "🔔 CALLBACK: Registration verification received - User: " + userId + ", Verified: " + isVerified + ", Expected: " + currentUserId);
+                if (isVerified && userId.equals(currentUserId)) {
+                    Log.d(TAG, "🎉 VERIFIED: Registration verified via callback, proceeding with chat setup");
+                    runOnUiThread(() -> {
+                        Log.d(TAG, "🏃 EXECUTING: Chat setup on UI thread");
+                        proceedWithChatSetup();
+                    });
+                } else {
+                    Log.w(TAG, "⚠️ MISMATCH: Registration callback received but conditions not met - Verified: " + isVerified + ", UserMatch: " + userId.equals(currentUserId));
+                }
+            }
+        });
+        
         // Add debug logging
         fpt.edu.vn.fchat_mobile.utils.SocketDebugger.enableDebugLogging();
         fpt.edu.vn.fchat_mobile.utils.SocketDebugger.checkSocketStatus();
 
-        if (chatId != null) {
-            SocketManager.joinRoom(chatId);
-        }
-
+        // Register user first and wait for verification before proceeding
         if (currentUserId != null) {
             SocketManager.registerUser(currentUserId);
-        }
-
-        if (chatId != null && currentUserId != null) {
-            SocketManager.emitUserEnteredChat(chatId, currentUserId);
-        }
-
-        if (chatId != null && currentUserId != null) {
-            SocketManager.requestChatStatusSync(chatId, currentUserId);
+            
+            // Wait for registration verification before joining room and other operations
+            new Handler().postDelayed(() -> {
+                // Ensure we're registered before proceeding
+                if (!SocketManager.isRegistrationVerified()) {
+                    Log.w(TAG, "⚠️ Registration not verified yet, force checking...");
+                    SocketManager.forceRegistrationCheck();
+                    
+                    // Wait a bit more for verification
+                    new Handler().postDelayed(() -> {
+                        if (SocketManager.isRegistrationVerified()) {
+                            proceedWithChatSetup();
+                        } else {
+                            Log.w(TAG, "⚠️ Still not verified after force check, proceeding anyway...");
+                            proceedWithChatSetup();
+                        }
+                    }, 2000);
+                } else {
+                    proceedWithChatSetup();
+                }
+            }, 1500); // Wait 1.5 seconds for initial registration
+        } else {
+            // No user ID, proceed without registration
+            proceedWithChatSetup();
         }
 
         RecyclerView recyclerView = findViewById(R.id.message_list);
@@ -239,19 +269,50 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         });
     }
     
+    private void proceedWithChatSetup() {
+        String currentUserId = sessionManager.getCurrentUserId();
+        
+        Log.d(TAG, "🚀 Proceeding with chat setup - User: " + currentUserId + ", Verified: " + SocketManager.isRegistrationVerified());
+        
+        if (chatId != null) {
+            SocketManager.joinRoom(chatId);
+            Log.d(TAG, "🏠 Joined room: " + chatId);
+        }
+
+        if (chatId != null && currentUserId != null) {
+            SocketManager.emitUserEnteredChat(chatId, currentUserId);
+            Log.d(TAG, "👤 Emitted user entered chat");
+        }
+
+        if (chatId != null && currentUserId != null) {
+            SocketManager.requestChatStatusSync(chatId, currentUserId);
+            Log.d(TAG, "🔄 Requested chat status sync");
+        }
+    }
+    
     @Override
     protected void onResume() {
         super.onResume();
         
+        String currentUserId = sessionManager.getCurrentUserId();
+        
+        // Force sync when resuming (handles auto-login/token issues)
+        if (currentUserId != null) {
+            SocketManager.forceSyncOnResume(currentUserId);
+        }
+        
         // Check socket status and reconnect if needed
         fpt.edu.vn.fchat_mobile.utils.SocketDebugger.checkSocketStatus();
+        SocketManager.ensureConnection();
         
         if (chatId != null) {
             SocketManager.joinRoom(chatId);
             
-            String currentUserId = sessionManager.getCurrentUserId();
             if (currentUserId != null) {
                 SocketManager.requestChatStatusSync(chatId, currentUserId);
+                
+                // Test connection periodically
+                SocketManager.testConnection(currentUserId, chatId);
             }
         }
         
@@ -370,6 +431,28 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
         }
 
         String userId = sessionManager.getCurrentUserId();
+        
+        // Ensure user is registered before sending message
+        if (!SocketManager.isRegistrationVerified()) {
+            Log.w(TAG, "⚠️ Sending message but user not verified, ensuring registration...");
+            SocketManager.forceRegistrationCheck();
+            
+            // Retry sending after a short delay
+            new Handler().postDelayed(() -> {
+                if (SocketManager.isRegistrationVerified()) {
+                    sendMessageInternal(content, userId);
+                } else {
+                    Log.e(TAG, "❌ User still not verified after retry, sending anyway...");
+                    sendMessageInternal(content, userId);
+                }
+            }, 1000);
+            return;
+        }
+        
+        sendMessageInternal(content, userId);
+    }
+    
+    private void sendMessageInternal(String content, String userId) {
 
         SendMessageRequest request = new SendMessageRequest(userId, chatId, content);
 
@@ -703,6 +786,11 @@ public class ChatDetailActivity extends AppCompatActivity implements SocketManag
             
             @Override
             public void onVideoDataReceived(String videoData, String senderId) {
+            }
+            
+            @Override
+            public void onCallForceTerminated(String callId, String reason) {
+                // Handle force termination if needed
             }
         });
     }

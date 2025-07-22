@@ -118,15 +118,59 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
         
         // Setup call listeners for incoming calls
         setupCallListeners();
+        
+        // CRITICAL: Always register user on socket setup to handle auto-login scenarios
+        String currentUserId = sessionManager.getCurrentUserId();
+        if (currentUserId != null) {
+            Log.d(TAG, "🔑 AUTO-LOGIN: Setting up user registration for auto-login: " + currentUserId);
+            SocketManager.registerUserForAutoLogin(currentUserId);
+            
+            // Set up registration callback for auto-login
+            SocketManager.setRegistrationCallback(new SocketManager.RegistrationCallback() {
+                @Override
+                public void onRegistrationVerified(String verifiedUserId, boolean isVerified) {
+                    if (isVerified && verifiedUserId.equals(currentUserId)) {
+                        runOnUiThread(() -> {
+                            Log.d(TAG, "🎉 AUTO-LOGIN: User registration verified successfully");
+                            Toast.makeText(ChatListActivity.this, "Online status restored", Toast.LENGTH_SHORT).show();
+                        });
+                    } else {
+                        Log.w(TAG, "⚠️ AUTO-LOGIN: Registration verification failed - Verified: " + isVerified + ", UserMatch: " + (verifiedUserId != null ? verifiedUserId.equals(currentUserId) : "null"));
+                    }
+                }
+            });
+        }
 
         socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     String userId = sessionManager.getCurrentUserId();
-                    socket.emit("register-user", userId);
-                    Log.d(TAG, "Socket connected, user registered: " + userId);
-                    Toast.makeText(ChatListActivity.this, "Connected to server", Toast.LENGTH_SHORT).show();
+                    if (userId != null) {
+                        Log.d(TAG, "🔄 RECONNECT: Socket reconnected, ensuring user registration: " + userId);
+                        
+                        // Check if user is already registered, if not, register
+                        if (!SocketManager.isRegistrationVerified()) {
+                            SocketManager.registerUser(userId);
+                            Log.d(TAG, "📝 RECONNECT: User not registered, registering now");
+                        } else {
+                            Log.d(TAG, "✅ RECONNECT: User already registered, verifying status");
+                            SocketManager.verifyRegistration();
+                        }
+                        
+                        // Update registration callback for reconnection scenarios
+                        SocketManager.setRegistrationCallback(new SocketManager.RegistrationCallback() {
+                            @Override
+                            public void onRegistrationVerified(String verifiedUserId, boolean isVerified) {
+                                if (isVerified && verifiedUserId.equals(userId)) {
+                                    runOnUiThread(() -> {
+                                        Log.d(TAG, "🎉 RECONNECT: User registration verified after reconnection");
+                                        Toast.makeText(ChatListActivity.this, "Reconnected to server", Toast.LENGTH_SHORT).show();
+                                    });
+                                }
+                            }
+                        });
+                    }
                 });
             }
         });
@@ -271,6 +315,11 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
             
             @Override
             public void onVideoDataReceived(String videoData, String senderId) {
+            }
+            
+            @Override
+            public void onCallForceTerminated(String callId, String reason) {
+                // Handle force termination if needed
             }
         });
     }
@@ -491,6 +540,22 @@ public class ChatListActivity extends AppCompatActivity implements SocketManager
     @Override
     protected void onResume() {
         super.onResume();
+        
+        String currentUserId = sessionManager.getCurrentUserId();
+        
+        // Enhanced auto-login handling - ensure user is properly registered
+        if (currentUserId != null) {
+            Log.d(TAG, "📱 AUTO-LOGIN: ChatList resumed with user: " + currentUserId);
+            
+            // Check if user is registered, if not, force registration
+            if (!SocketManager.isRegistrationVerified()) {
+                Log.w(TAG, "⚠️ AUTO-LOGIN: User not registered on resume, forcing registration");
+                SocketManager.registerUserForAutoLogin(currentUserId);
+            } else {
+                Log.d(TAG, "✅ AUTO-LOGIN: User already registered, performing sync");
+                SocketManager.forceSyncOnResume(currentUserId);
+            }
+        }
         
         // Refresh chat list when returning to activity
         Log.d(TAG, "📱 ChatList resumed - refreshing data");

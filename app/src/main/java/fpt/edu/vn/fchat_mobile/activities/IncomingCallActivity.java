@@ -389,4 +389,13 @@ public class IncomingCallActivity extends AppCompatActivity implements SocketMan
     @Override
     public void onVideoDataReceived(String videoData, String senderId) {
     }
+    
+    @Override
+    public void onCallForceTerminated(String callId, String reason) {
+        runOnUiThread(() -> {
+            Log.d("IncomingCallActivity", "🚫 Call force terminated - ID: " + callId + ", Reason: " + reason);
+            // Immediately finish the activity
+            finish();
+        });
+    }
 }

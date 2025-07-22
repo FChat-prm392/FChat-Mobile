@@ -57,6 +57,7 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     private AudioManager audioManager;
     private MediaPlayer ringtone;
     private Handler callDurationHandler = new Handler();
+    private Handler callTimeoutHandler = new Handler(); // For handling call timeouts
     private long callStartTime;
     private SessionManager sessionManager;
     private VoiceStreamer voiceStreamer;
@@ -284,6 +285,77 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     }
     
     private void initiateCall() {
+        statusText.setText("Preparing call...");
+        
+        String currentUserId = sessionManager.getCurrentUserId();
+        Log.d("CallActivity", "🚀 INITIATE CALL STARTED - User: " + currentUserId);
+        
+        if (currentUserId == null) {
+            Log.e("CallActivity", "❌ No user ID available");
+            statusText.setText("Authentication failed");
+            android.widget.Toast.makeText(this, "Please log in again.", android.widget.Toast.LENGTH_LONG).show();
+            endCall();
+            return;
+        }
+        
+        // Print complete socket state for debugging
+        Log.d("CallActivity", "🔍 Printing socket state before readiness check:");
+        SocketManager.printSocketState();
+        
+        // First check if we're ready for calls
+        boolean ready = SocketManager.isReadyForCalls();
+        Log.d("CallActivity", "📋 Call readiness result: " + ready);
+        
+        if (!ready) {
+            Log.w("CallActivity", "⚠️ Not ready for calls, running diagnostics...");
+            statusText.setText("Connecting...");
+            
+            // Run comprehensive diagnostics
+            SocketManager.performConnectionDiagnostics(currentUserId);
+            
+            // Try to fix connection issues
+            SocketManager.ensureConnection();
+            SocketManager.forceRegistrationCheck();
+            
+            // Wait longer and retry with more detailed feedback
+            new android.os.Handler().postDelayed(() -> {
+                Log.d("CallActivity", "🔁 Retry check after 5 seconds:");
+                SocketManager.printSocketState();
+                
+                if (SocketManager.isReadyForCalls()) {
+                    Log.d("CallActivity", "✅ Connection restored, proceeding with call");
+                    proceedWithCallInitiation();
+                } else {
+                    Log.e("CallActivity", "❌ Connection diagnostics failed after retry");
+                    runOnUiThread(() -> {
+                        statusText.setText("Connection failed");
+                        
+                        // Show detailed error message
+                        String errorMsg;
+                        if (!SocketManager.isConnected()) {
+                            errorMsg = "Unable to connect to server. Please check your internet connection and try again.";
+                            Log.e("CallActivity", "❌ Socket not connected");
+                        } else if (!SocketManager.isRegistrationVerified()) {
+                            errorMsg = "Registration failed. Please restart the app and try again.";
+                            Log.e("CallActivity", "❌ Registration not verified");
+                        } else {
+                            errorMsg = "Connection error. Please check your internet and try again.";
+                            Log.e("CallActivity", "❌ Unknown connection error");
+                        }
+                        
+                        android.widget.Toast.makeText(CallActivity.this, errorMsg, android.widget.Toast.LENGTH_LONG).show();
+                        endCall();
+                    });
+                }
+            }, 5000); // Wait 5 seconds for connection to establish
+            return;
+        }
+        
+        Log.d("CallActivity", "✅ Ready for calls, proceeding immediately");
+        proceedWithCallInitiation();
+    }
+    
+    private void proceedWithCallInitiation() {
         statusText.setText("Calling...");
         
         // Join the socket room for real-time communication
@@ -292,12 +364,41 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
             Log.d("CallActivity", "Joined socket room for call initiation: " + chatId);
         }
         
-        String callId = chatId + "_" + System.currentTimeMillis();
         String currentUserId = sessionManager.getCurrentUserId();
         String currentUserName = sessionManager.getCurrentUserFullname();
         
+        // MESSENGER-STYLE: Just initiate call directly without checking online status
+        // The server will handle whether the user is available or not
+        String callId = chatId + "_" + System.currentTimeMillis();
+        
+        Log.d("CallActivity", "� MESSENGER-STYLE: Initiating call directly without status check");
+        Log.d("CallActivity", "  • Call ID: " + callId);
+        Log.d("CallActivity", "  • Caller: " + currentUserName + " (" + currentUserId + ")");
+        Log.d("CallActivity", "  • Receiver: " + participantId);
+        Log.d("CallActivity", "  • Video Call: " + isVideoCall);
+        
         // Emit call initiation using SocketManager
         SocketManager.emitCallInitiate(callId, chatId, currentUserId, participantId, currentUserName, isVideoCall);
+        
+        Log.d("CallActivity", "✅ Call initiated - waiting for response from receiver");
+        
+        // Set timeout for call response (like Messenger does)
+        callTimeoutHandler.postDelayed(() -> {
+            runOnUiThread(() -> {
+                if (!isCallConnected) {
+                    Log.w("CallActivity", "⏰ Call timeout - no response from receiver");
+                    statusText.setText("No answer");
+                    android.widget.Toast.makeText(CallActivity.this, 
+                        "No answer. Try calling again later.", 
+                        android.widget.Toast.LENGTH_SHORT).show();
+                    
+                    // End call after timeout
+                    callTimeoutHandler.postDelayed(() -> {
+                        endCall();
+                    }, 2000);
+                }
+            });
+        }, 30000); // 30 second timeout like most messaging apps
         
         // Wait for receiver to answer - no auto-connection
         // Connection will happen when onCallAnswered() is triggered
@@ -485,8 +586,13 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     
     @Override
     public void onBackPressed() {
-        // Prevent back button during call - user must use end call button
-        Toast.makeText(this, "Use the end call button to hang up", Toast.LENGTH_SHORT).show();
+        // During an active call, prevent accidental hangup via back button
+        if (isCallConnected) {
+            Toast.makeText(this, "Use the end call button to hang up", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // If call is not connected yet, allow normal back behavior
+        super.onBackPressed();
     }
 
     // CallListener interface implementations
@@ -529,7 +635,37 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallFailed(String callId, String reason) {
         runOnUiThread(() -> {
-            Toast.makeText(this, "Call failed: " + reason, Toast.LENGTH_SHORT).show();
+            Log.d("CallActivity", "[MESSENGER-STYLE] Call failed - CallId: " + callId + ", Reason: " + reason);
+            
+            // Stop any ongoing ringtone
+            if (ringtone != null && ringtone.isPlaying()) {
+                Log.d("CallActivity", "[MESSENGER-STYLE] Stopping ringtone due to call failure");
+                ringtone.stop();
+                ringtone.release();
+            }
+            
+            // Clear any pending timeout handlers
+            if (callTimeoutHandler != null) {
+                callTimeoutHandler.removeCallbacksAndMessages(null);
+                Log.d("CallActivity", "[MESSENGER-STYLE] Cleared timeout handlers due to call failure");
+            }
+            
+            // Show appropriate message based on reason
+            String userMessage;
+            if (reason.toLowerCase().contains("no answer") || reason.toLowerCase().contains("timeout")) {
+                userMessage = "No answer - try again later";
+            } else if (reason.toLowerCase().contains("busy")) {
+                userMessage = "User is busy";
+            } else if (reason.toLowerCase().contains("declined") || reason.toLowerCase().contains("rejected")) {
+                userMessage = "Call declined";
+            } else if (reason.toLowerCase().contains("offline") || reason.toLowerCase().contains("unavailable")) {
+                userMessage = "User unavailable";
+            } else {
+                userMessage = "Call failed: " + reason;
+            }
+            
+            Log.d("CallActivity", "[MESSENGER-STYLE] Showing user message: " + userMessage);
+            Toast.makeText(this, userMessage, Toast.LENGTH_SHORT).show();
             finish();
         });
     }
@@ -543,6 +679,15 @@ public class CallActivity extends AppCompatActivity implements SocketManager.Cal
     @Override
     public void onCallVideoStatus(String callId, String userId, boolean isVideoOn) {
         runOnUiThread(() -> {
+        });
+    }
+    
+    @Override
+    public void onCallForceTerminated(String callId, String reason) {
+        runOnUiThread(() -> {
+            Log.d("CallActivity", "🚫 Call force terminated - ID: " + callId + ", Reason: " + reason);
+            // Immediately end the call
+            endCall();
         });
     }
     
